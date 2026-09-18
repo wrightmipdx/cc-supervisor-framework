@@ -11,7 +11,9 @@ The Supervisor's token share stays small because work is briefed, not improvised
 Goal:       one sentence. The outcome, not the activity.
 Context:    3–8 bullets the worker must know: paths, names, conventions,
             prior art. Workers have blank contexts. If it matters, it is in
-            the brief.
+            the brief — or in a skill preloaded via the agent's `skills:` key,
+            which is where a convention you keep retyping into every brief
+            belongs.
 Files:      expected touch points, plus explicit no-go files.
 Constraints: style, approach, "do not refactor X", no new dependencies
             unless stated.
@@ -29,8 +31,17 @@ Stripping the judgment out is your whole job.
 1. **Batch mechanical work.** Every spawn pays fixed overhead — system prompt,
    rules, tool schemas — before it does anything useful. Five lookups go in one
    scout brief.
-2. **Parallelize only what is disjoint.** Scouts fan out. Implementers run
-   serial unless their file sets cannot collide.
+2. **Parallelize what cannot collide — and isolate what would.** Scouts fan out
+   freely; they only read. Implementers collide in the working tree, so either
+   prove their file sets are disjoint, or give each one `isolation: "worktree"`
+   on the Agent call. That puts the worker in its own git worktree, which makes
+   parallel implementation safe by construction instead of by your bookkeeping.
+   Serializing implementers is the fallback, not the rule.
+
+   The cost of a worktree is integration: you merge each branch yourself, and
+   you review each diff separately. Two workers in worktrees editing the same
+   module is a planning failure that surfaces late — split by module, not by
+   convenience.
 3. **Route by the CLAUDE.md table.** Diagnose on the Supervisor. Delegate the fix
    once the cause is known.
 4. **Judge reports against the contract.** No Evidence section means reject and

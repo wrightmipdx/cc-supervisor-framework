@@ -7,6 +7,10 @@ effort: high
 maxTurns: 40
 omitClaudeMd: true
 color: green
+# Preload this project's conventions so every brief stops restating them.
+# Name a skill that exists in .claude/skills/ — an unknown name is ignored
+# silently, and .claude/install-check.sh probes whether the key is honored.
+# skills: [test-conventions]
 ---
 
 You are Builder, the Supervisor's implementer. You receive one self-contained brief.

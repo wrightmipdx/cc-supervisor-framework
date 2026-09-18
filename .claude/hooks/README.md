@@ -1,15 +1,20 @@
 # Supervisor hooks
 
-Instructions are advice. Hooks are mechanism. These five fence the three
-failure modes that discipline alone does not survive.
+Instructions are advice. Hooks are mechanism. These four fence the failure
+modes that discipline alone does not survive.
 
 | Hook | Event | Fences |
 |---|---|---|
 | `10-session-start.sh` | SessionStart | Context loss across sessions and compactions |
 | `20-pre-delegate.sh` | PreToolUse `Agent\|Task` | Delegating without a ledger |
 | `30-commit-gate.sh` | PreToolUse `Bash` | Blind staging; closing with open requirements |
-| `40-supervisor-budget.sh` | PostToolUse `Edit\|Write` | The Supervisor silently implementing solo |
 | `50-stop-retro.sh` | Stop | Ending a session without a retro |
+
+## Related
+
+`.claude/install-check.sh` checks that every hook here is wired into
+`settings.json`, executable, and syntactically valid, and runs the commit-gate
+suite. Run it after an upgrade.
 
 ## Requirements
 
@@ -30,13 +35,15 @@ failure modes that discipline alone does not survive.
   denied. Run it after touching the gate.
 - The pre-delegate and stop hooks fire once per session, tracked by a flag file
   in `$TMPDIR` keyed on the session ID.
-- `40-supervisor-budget.sh` counts edits from workers too, because hooks fire inside
-  subagents. Treat the number as a smoke alarm, not an audit.
+- There is deliberately no edit-budget hook. An earlier version counted
+  Edit/Write calls to catch the Supervisor implementing solo, but hooks fire
+  inside subagents too, so one builder tripped it unaided. A hook that fires on
+  toast trains you to ignore hook output generally — which is expensive when the
+  other four are load-bearing. The `status` and `retro` skills count opus
+  dispatches instead, which is a number that means something.
 
 ## Tuning
 
-- Edit budget: change `EDIT_BUDGET` under `env` in
-  `.claude/settings.json`.
 - Docs location: change `DOCS` in the same place.
 - Turn one off: delete its block from the `hooks` key in `settings.json`.
 - Turn all off for one session: set `"disableAllHooks": true`.

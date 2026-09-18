@@ -63,3 +63,6 @@ framework fails.
 
 No code during intake, except a change you have already placed in the direct
 lane. Exploration is never code.
+
+If the lane you picked is `plan` or `debug`, `EnterPlanMode` now and let the
+harness hold that rule for you.

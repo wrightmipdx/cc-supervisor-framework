@@ -6,6 +6,19 @@ argument-hint: [goal]
 
 Explore, design, then write it down. No code until the plan exists.
 
+## 0. Enter plan mode
+
+`EnterPlanMode` before you explore. The harness then refuses edits until you
+call `ExitPlanMode`, which also puts the plan in front of the user for approval.
+
+This is belt and braces with step 4, and worth it: "no code during planning" is
+the rule most easily lost when a fix looks obvious mid-exploration, and
+willpower is a weaker mechanism than a tool that refuses. Exploration is
+read-only by nature, so the mode costs you nothing until it saves you.
+
+If your version does not offer plan mode, step 4 still gates the dispatch —
+you are just enforcing it yourself.
+
 ## 1. Explore — keep the Supervisor's context clean
 
 - ONE batched scout brief carrying every lookup: seams, conventions, prior art,
@@ -38,8 +51,9 @@ Explore, design, then write it down. No code until the plan exists.
 
 ## 4. Confirm
 
-Show the user: goal, success criteria, tasks with their tiers, and the scope
-cuts. Get a go before any dispatch. Flip `status` to `active` on approval.
+Show the user: goal, success criteria, tasks with their tiers and review lanes,
+and the scope cuts. `ExitPlanMode` carries this to them for approval. Get a go
+before any dispatch. Flip `status` to `active` on approval.
 
 ## Anti-patterns
 

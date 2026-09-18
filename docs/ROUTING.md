@@ -69,6 +69,9 @@ and record it in `docs/LESSONS.md`.
 | 9 | Batching — every spawn pays fixed overhead, so five greps are one agent | Orchestrator plugin practice |
 | 10 | Never toggle the Supervisor's model mid-session; the prompt cache is model-scoped | Community routing playbook |
 | 11 | Over-instructing cheap tiers fails; stripping judgment out of briefs is the Supervisor's job | Community routing playbook |
+| 12 | Govern cost by opus-tier share, not chair share; tokens are not dollars | This framework's own arithmetic — see "What the split really costs" |
+| 13 | A bounded direct lane: briefing a five-line fix costs more than the fix | Correction to #1 after review; volume decides delegation, difficulty decides tier |
+| 14 | Verify the harness honors a frontmatter key before relying on it | `.claude/install-check.sh`; unsupported keys are ignored silently |
 
 ## Architecture
 
@@ -112,13 +115,9 @@ cache.
 reliable. Haiku holding a judgment call is a coin flip.
 
 **The built-in Explore agent.** In several releases it inherits the main
-model, so it bills supervisor-tier tokens for reconnaissance. Use `scout`. The
-project agent at `.claude/agents/explore.md` may or may not shadow the built-in
-one depending on your version — do not depend on it.
-
-**Subagent files and reload.** Whether edits to `.claude/agents/*.md` take
-effect without a restart has varied between releases. If a change to an agent
-seems not to apply, restart the session before you debug the file.
+model, so it bills supervisor-tier tokens for reconnaissance. Use `scout`.
+Shadowing it with a project agent of the same name is version-dependent and not
+worth relying on; the routing table forbids it by name instead.
 
 ## When this framework is the wrong tool
 
@@ -132,10 +131,28 @@ honest.
 
 ## Optional knobs
 
+Run `.claude/install-check.sh` before trusting any of these. It verifies the
+wiring statically and prints a one-time probe for the keys only the harness can
+answer for. An unsupported frontmatter key is ignored **silently**, so an
+unverified knob is a knob you are guessing about.
+
 - `maxTurns` on a subagent is a runaway guard.
 - `skills` in subagent frontmatter preloads a skill into the worker's context.
+  A convention you retype into every brief belongs here instead — see the
+  commented example in `builder.md`.
 - `effort` sizing: `low` for mechanical sweeps, `high` for implementation,
   `max` for architecture and security.
 - `omitClaudeMd: true` keeps the chair's constitution out of worker contexts.
-  Workers should not read instructions telling them to delegate. Verify your
-  version supports this key; an unknown key is ignored.
+  Workers should not read instructions telling them to delegate. This is the
+  key that bites when unsupported, which is why `CLAUDE.md` also opens with a
+  banner telling subagents to ignore it. Keep the banner even if the probe says
+  the key works — it costs six lines and survives an upgrade that the probe
+  result does not.
+- `isolation: "worktree"` on an Agent call gives the worker its own git
+  worktree. It is what makes parallel implementers safe; see `dispatch`.
+
+## Subagent files and reload
+
+Whether edits to `.claude/agents/*.md` take effect without a restart has varied
+between releases. If a change to an agent seems not to apply, restart the
+session before you debug the file.
