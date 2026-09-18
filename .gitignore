@@ -6,3 +6,14 @@ scratch/*
 # macOS
 .DS_Store
 **/.DS_Store
+
+# This repo develops the framework and also runs on it. The hooks read
+# docs/LEDGER*.md and docs/plans/*.md, so the framework's own ledger and plans
+# have to live where the hooks look — but they are development notes, not part
+# of what is released. Untracked here, still read by the hooks.
+#
+# Deliberately NOT ignored: docs/LEDGER.md and docs/LESSONS.md, which install.sh
+# seeds into a consumer repo, and docs/plans/000-template.md, which ships.
+docs/LEDGER-*.md
+docs/plans/*.md
+!docs/plans/000-template.md
