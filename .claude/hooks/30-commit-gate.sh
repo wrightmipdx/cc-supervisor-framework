@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Fable hook — PreToolUse on Bash
+# Supervisor hook — PreToolUse on Bash
 # Two jobs:
-#   1. BLOCK blind staging (git add -A / git add . / git commit -a). The chair
+#   1. BLOCK blind staging (git add -A / git add . / git commit -a). The Supervisor
 #      stages this increment's files, deliberately.
 #   2. WARN when committing with open ledger items (failure mode #2: closing
 #      with open requirements). A warning, not a block — partial commits are
@@ -11,7 +11,7 @@
 
 set -uo pipefail
 
-DOCS="${FABLE_DOCS:-docs/fable}"
+DOCS="${DOCS:-docs}"
 ROOT="${CLAUDE_PROJECT_DIR:-.}"
 cd "$ROOT" 2>/dev/null || exit 0
 
@@ -35,9 +35,9 @@ deny() {
 # --- 1. blind staging --------------------------------------------------------
 case "$CMD" in
   *"git add -A"*|*"git add --all"*|*"git add ."*|*"git add :/"*)
-    deny "FABLE: blind staging is blocked. Stage only this increment's files by path (git add path/to/file). See the fable-commit skill." ;;
+    deny "SUPERVISOR: blind staging is blocked. Stage only this increment's files by path (git add path/to/file). See the commit skill." ;;
   *"git commit -a"*|*"git commit --all"*)
-    deny "FABLE: 'git commit -a' stages everything tracked. Stage this increment's files by path, then commit. See the fable-commit skill." ;;
+    deny "SUPERVISOR: 'git commit -a' stages everything tracked. Stage this increment's files by path, then commit. See the commit skill." ;;
 esac
 
 # --- 2. open ledger on commit ------------------------------------------------
@@ -59,7 +59,7 @@ done
 jq -n --arg n "$OPEN" '{
   hookSpecificOutput: {
     hookEventName: "PreToolUse",
-    additionalContext: ("FABLE: " + $n + " ledger item(s) are still open. Committing a verified increment mid-plan is fine. Closing the session with these open is not — run fable-retro before you finish.")
+    additionalContext: ("SUPERVISOR: " + $n + " ledger item(s) are still open. Committing a verified increment mid-plan is fine. Closing the session with these open is not — run retro before you finish.")
   }
 }'
 exit 0

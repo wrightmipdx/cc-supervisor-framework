@@ -1,5 +1,5 @@
 ---
-name: fable-ui
+name: ui
 description: Mockup-driven UI work — iterate a mockup to sign-off, convert the signed-off mockup into an element-inventory spec, then build and gate each phase on a screenshot diff. Use for any front-end change whose acceptance test is "it looks like the picture", and whenever built UI does not match a mockup.
 argument-hint: [screen or feature]
 ---
@@ -9,7 +9,7 @@ real code. Prose never overrides the picture.
 
 ## 1. Mockup to sign-off
 
-- `fable-designer` in Mode A produces one self-contained HTML file per screen.
+- `designer` in Mode A produces one self-contained HTML file per screen.
 - Iterate with the user on the picture, not on prose. Fast rounds.
 - Stop when the user signs off. Record the file path and the sign-off in the
   plan. That file is now frozen. It is the reference.
@@ -38,7 +38,7 @@ Rules for the inventory:
 ## 3. Build order
 
 Build the highest-risk screen first, so the first fidelity check lands early.
-One screen per brief to `fable-designer` in Mode B.
+One screen per brief to `designer` in Mode B.
 
 ## 4. Fidelity gate — every phase
 

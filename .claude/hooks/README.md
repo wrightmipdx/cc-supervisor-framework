@@ -1,4 +1,4 @@
-# Fable hooks
+# Supervisor hooks
 
 Instructions are advice. Hooks are mechanism. These five fence the three
 failure modes that discipline alone does not survive.
@@ -8,7 +8,7 @@ failure modes that discipline alone does not survive.
 | `10-session-start.sh` | SessionStart | Context loss across sessions and compactions |
 | `20-pre-delegate.sh` | PreToolUse `Agent\|Task` | Delegating without a ledger |
 | `30-commit-gate.sh` | PreToolUse `Bash` | Blind staging; closing with open requirements |
-| `40-chair-budget.sh` | PostToolUse `Edit\|Write` | The chair silently implementing solo |
+| `40-supervisor-budget.sh` | PostToolUse `Edit\|Write` | The Supervisor silently implementing solo |
 | `50-stop-retro.sh` | Stop | Ending a session without a retro |
 
 ## Requirements
@@ -23,14 +23,14 @@ failure modes that discipline alone does not survive.
   (`git add -A`, `git add .`, `git commit -a`). Everything else injects context.
 - The pre-delegate and stop hooks fire once per session, tracked by a flag file
   in `$TMPDIR` keyed on the session ID.
-- `40-chair-budget.sh` counts edits from workers too, because hooks fire inside
+- `40-supervisor-budget.sh` counts edits from workers too, because hooks fire inside
   subagents. Treat the number as a smoke alarm, not an audit.
 
 ## Tuning
 
-- Edit budget: change `FABLE_CHAIR_EDIT_BUDGET` under `env` in
+- Edit budget: change `EDIT_BUDGET` under `env` in
   `.claude/settings.json`.
-- Docs location: change `FABLE_DOCS` in the same place.
+- Docs location: change `DOCS` in the same place.
 - Turn one off: delete its block from the `hooks` key in `settings.json`.
 - Turn all off for one session: set `"disableAllHooks": true`.
 
@@ -52,5 +52,5 @@ names:
 
 ```bash
 # temporary first line of any hook
-cat > /tmp/fable-hook-input.json && exec < /tmp/fable-hook-input.json
+cat > /tmp/hook-input.json && exec < /tmp/hook-input.json
 ```

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Fable hook — SessionStart
+# Supervisor hook — SessionStart
 # Injects the durable state that a conversation cannot carry: lessons, open
 # ledger items, and the active plan. Files survive compaction. Chat does not.
 #
@@ -7,7 +7,7 @@
 
 set -uo pipefail
 
-DOCS="${FABLE_DOCS:-docs/fable}"
+DOCS="${DOCS:-docs}"
 ROOT="${CLAUDE_PROJECT_DIR:-.}"
 cd "$ROOT" 2>/dev/null || exit 0
 
@@ -69,7 +69,7 @@ fi
 
 [ -z "$CTX" ] && exit 0
 
-CTX="${CTX}Run the fable-intake skill before acting on any request."
+CTX="${CTX}Run the intake skill before acting on any request."
 
 jq -n --arg ctx "$CTX" '{
   hookSpecificOutput: {

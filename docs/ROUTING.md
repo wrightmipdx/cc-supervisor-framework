@@ -5,10 +5,10 @@ when routing feels wrong, or when onboarding someone to this framework.
 
 ## Why this exists
 
-The chair pays for decisions. The cheap tiers pay for tokens. A published
-measurement of this routing style recorded 14 percent of tokens on the chair
+The Supervisor pays for decisions. The cheap tiers pay for tokens. A published
+measurement of this routing style recorded 14 percent of tokens on the Supervisor
 (planning plus review), 71 percent on sonnet, and 15 percent on haiku — roughly
-a 3x cost cut with an indistinguishable diff, and the chair caught things the
+a 3x cost cut with an indistinguishable diff, and the Supervisor caught things the
 plan missed.
 
 Treat those numbers as a target shape, not a promise. Your ratio depends on
@@ -18,7 +18,7 @@ your work.
 
 | # | Practice | Source |
 |---|---|---|
-| 1 | Judgment versus keystrokes: the chair pays for decisions, cheap tiers pay for tokens | Community routing playbook |
+| 1 | Judgment versus keystrokes: the Supervisor pays for decisions, cheap tiers pay for tokens | Community routing playbook |
 | 2 | Explore, plan, code, commit — skip the plan only for one-sentence diffs | Anthropic Claude Code best practices |
 | 3 | Briefs written for "a gifted engineer with bad judgment and no context"; fresh subagent per task | Jesse Vincent, Superpowers |
 | 4 | Fresh-eyes verification on every close; the reviewer sees no prior rounds | Orchestrator plugins; Anthropic's own measurement of worker-plus-verifier |
@@ -27,15 +27,15 @@ your work.
 | 7 | TDD red-green-refactor; root cause before fix; escalation ladder | Superpowers |
 | 8 | Small increments — small changelists review well and revert well | Google engineering practices |
 | 9 | Batching — every spawn pays fixed overhead, so five greps are one agent | Orchestrator plugin practice |
-| 10 | Never toggle the chair's model mid-session; the prompt cache is model-scoped | Community routing playbook |
-| 11 | Over-instructing cheap tiers fails; stripping judgment out of briefs is the chair's job | Community routing playbook |
+| 10 | Never toggle the Supervisor's model mid-session; the prompt cache is model-scoped | Community routing playbook |
+| 11 | Over-instructing cheap tiers fails; stripping judgment out of briefs is the Supervisor's job | Community routing playbook |
 
 ## Architecture
 
 ```
                  +----------------------------------+
-                 |        FABLE — the chair         |
-                 | judge - plan - arbitrate - verify|
+                 |      SUPERVISOR                   |
+                 | judge - plan - arbitrate - verify |
                  |      integrate - commit          |
                  +----------------+-----------------+
        briefs down |  reports up (<= 40 lines, evidence required)
@@ -60,7 +60,7 @@ cache.
 reliable. Haiku holding a judgment call is a coin flip.
 
 **The built-in Explore agent.** In several releases it inherits the main
-model, so it bills chair-tier tokens for reconnaissance. Use `fable-scout`. The
+model, so it bills supervisor-tier tokens for reconnaissance. Use `scout`. The
 project agent at `.claude/agents/explore.md` may or may not shadow the built-in
 one depending on your version — do not depend on it.
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Fable hook — Stop
-# Reminds the chair to close properly: open ledger items, a dirty tree, or
+# Supervisor hook — Stop
+# Reminds the Supervisor to close properly: open ledger items, a dirty tree, or
 # leftover scratch all mean the session is not finished.
 #
 # Never blocks. A blocking Stop hook can loop.
@@ -8,7 +8,7 @@
 
 set -uo pipefail
 
-DOCS="${FABLE_DOCS:-docs/fable}"
+DOCS="${DOCS:-docs}"
 ROOT="${CLAUDE_PROJECT_DIR:-.}"
 cd "$ROOT" 2>/dev/null || exit 0
 
@@ -16,7 +16,7 @@ command -v jq >/dev/null 2>&1 || exit 0
 
 INPUT=$(cat)
 SESSION=$(printf '%s' "$INPUT" | jq -r '.session_id // "nosession"')
-FLAG="${TMPDIR:-/tmp}/fable-retro-nudged-${SESSION}"
+FLAG="${TMPDIR:-/tmp}/retro-nudged-${SESSION}"
 [ -f "$FLAG" ] && exit 0
 
 NOTES=""
@@ -45,6 +45,6 @@ fi
 touch "$FLAG" 2>/dev/null
 
 jq -n --arg n "$NOTES" '{
-  systemMessage: ("FABLE retro check — " + $n + "Run /fable-retro to close the session cleanly.")
+  systemMessage: ("SUPERVISOR retro check — " + $n + "Run /retro to close the session cleanly.")
 }'
 exit 0

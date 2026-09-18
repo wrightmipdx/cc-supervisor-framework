@@ -1,6 +1,6 @@
 ---
-name: fable-retro
-description: Session close for Fable — reconcile the ledger, run the success criteria, write lessons, archive, and hand off cleanly. Use at the end of a session and when a plan finishes or is abandoned.
+name: retro
+description: Session close for the Supervisor — reconcile the ledger, run the success criteria, write lessons, archive, and hand off cleanly. Use at the end of a session and when a plan finishes or is abandoned.
 ---
 
 Close the session like an engineer.
@@ -14,7 +14,7 @@ Close the session like an engineer.
 - Plan status: `done` when the criteria hold. `abandoned` with a one-line why
   if dropped. Never delete a plan. Future-you wants the map of what failed.
 
-## 2. Lessons → `docs/fable/LESSONS.md`
+## 2. Lessons → `docs/LESSONS.md`
 
 Newest first, one line each, maximum 5 per session:
 
@@ -42,6 +42,6 @@ every future session.
 
 ## 5. Routing check
 
-Report the session's token split if you have it. Chair above roughly 20 percent
+Report the session's token split if you have it. Supervisor above roughly 20 percent
 means decomposition leaked keystrokes upward. Name the task where it happened.
 That is next session's first lesson.

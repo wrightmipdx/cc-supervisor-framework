@@ -1,5 +1,5 @@
 ---
-name: fable-critic
+name: critic
 description: Adversarial reviewer of diffs, plans, and designs. Use before committing any non-trivial change, and mandatorily for security, auth, money, data loss, or public API contracts. Reviews against the brief in a fresh context; paid to find flaws.
 model: opus
 tools: Read, Glob, Grep, Bash

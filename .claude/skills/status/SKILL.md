@@ -1,6 +1,6 @@
 ---
-name: fable-status
-description: Show the current Fable state — open ledger items, active plan, recent lessons, working tree, and the routing health check. Use when resuming after a break, after a compaction, or when the user asks where things stand.
+name: status
+description: Show the current Supervisor state — open ledger items, active plan, recent lessons, working tree, and the routing health check. Use when resuming after a break, after a compaction, or when the user asks where things stand.
 disable-model-invocation: false
 allowed-tools: Read, Glob, Bash(git status:*), Bash(git log:*), Bash(ls:*)
 ---
@@ -15,8 +15,8 @@ echo "--- last 5 commits ---"; git log --oneline -5 2>/dev/null
 echo "--- scratch ---"; ls -1 scratch 2>/dev/null | head -10
 ```
 
-Then read `docs/fable/LEDGER.md`, the newest 10 lines of
-`docs/fable/LESSONS.md`, and any plan with `status: active`.
+Then read `docs/LEDGER.md`, the newest 10 lines of
+`docs/LESSONS.md`, and any plan with `status: active`.
 
 ## Report
 
@@ -31,10 +31,10 @@ Then read `docs/fable/LEDGER.md`, the newest 10 lines of
 ## Scratch
 - N files (stale scratch means an unclosed task)
 ## Routing health
-- chair share estimate, and any task that leaked keystrokes upward
+- Supervisor share estimate, and any task that leaked keystrokes upward
 ## Recommended next move
 - one line
 ```
 
 If the ledger has open items and the tree is clean, the next move is dispatch.
-If the tree is dirty and the ledger is closed, the next move is `fable-review`.
+If the tree is dirty and the ledger is closed, the next move is `review`.

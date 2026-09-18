@@ -1,6 +1,6 @@
 ---
 name: explore
-description: Read-only codebase search. A cheap stand-in for the built-in Explore agent. Prefer fable-scout for briefed reconnaissance; this exists so a reflexive "explore the codebase" does not land on chair-tier tokens.
+description: Read-only codebase search. A cheap stand-in for the built-in Explore agent. Prefer scout for briefed reconnaissance; this exists so a reflexive "explore the codebase" does not land on supervisor-tier tokens.
 model: haiku
 tools: Read, Glob, Grep, Bash
 effort: low
@@ -28,8 +28,8 @@ You are a cheap read-only searcher. You locate code and report where it lives.
 
 ---
 
-**Note for the chair.** Whether a project agent named `explore` shadows the
+**Note for the Supervisor.** Whether a project agent named `explore` shadows the
 built-in `Explore` agent is version-dependent and has changed between releases.
 Do not rely on it. The routing table in `CLAUDE.md` forbids the built-in
-`Explore` outright, and `fable-scout` is the reconnaissance lane. Delete this
+`Explore` outright, and `scout` is the reconnaissance lane. Delete this
 file if the shadowing causes confusion in your version.

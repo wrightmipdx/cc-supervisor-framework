@@ -1,9 +1,9 @@
 ---
-name: fable-dispatch
-description: The Fable delegation protocol — brief contract, tier routing, batching, report judging, escalation and refusal handling. Load before the first delegation of a session.
+name: dispatch
+description: The Supervisor delegation protocol — brief contract, tier routing, batching, report judging, escalation and refusal handling. Load before the first delegation of a session.
 ---
 
-The chair's token share stays small because work is briefed, not improvised.
+The Supervisor's token share stays small because work is briefed, not improvised.
 
 ## Brief contract — every dispatch, always
 
@@ -31,12 +31,12 @@ Stripping the judgment out is your whole job.
    scout brief.
 2. **Parallelize only what is disjoint.** Scouts fan out. Implementers run
    serial unless their file sets cannot collide.
-3. **Route by the CLAUDE.md table.** Diagnose on the chair. Delegate the fix
+3. **Route by the CLAUDE.md table.** Diagnose on the Supervisor. Delegate the fix
    once the cause is known.
 4. **Judge reports against the contract.** No Evidence section means reject and
    re-run. Never accept an assertion of success.
 5. **Two strikes, escalate.** Rewrite the brief, hand it one tier up:
-   builder → architect → chair. Stop dispatching a task you have failed twice
+   builder → architect → Supervisor. Stop dispatching a task you have failed twice
    to specify.
 6. **Workers never commit.** The chair integrates and commits.
 7. **Do not delegate trivia.** If you could make the edit in one tool call, do
@@ -59,7 +59,7 @@ brief is reliable. Haiku holding a judgment call is not.
 
 | Report state | Action |
 |---|---|
-| Evidence present, done-when met | Proceed to `fable-review` |
+| Evidence present, done-when met | Proceed to `review` |
 | No Evidence section | Reject, re-run unchanged |
 | Deviations listed | Read them. A deviation is a brief defect until proven otherwise |
 | Blocker reported | Do not re-dispatch. Fix the brief or take the task |

@@ -1,6 +1,6 @@
 ---
-name: fable-review
-description: Verification of a worker's close — the chair reads the diff and runs the checks, then a fresh-eyes critic pass on non-trivial changes. Use before every commit of substance.
+name: review
+description: Verification of a worker's close — the Supervisor reads the diff and runs the checks, then a fresh-eyes critic pass on non-trivial changes. Use before every commit of substance.
 allowed-tools: Read, Glob, Grep, Bash(git diff:*), Bash(git status:*), Bash(git show:*)
 ---
 
@@ -16,7 +16,7 @@ Fresh eyes on every close. Workers are confident, not correct.
 
 ## 2. Fresh-eyes critic — non-trivial closes
 
-Dispatch `fable-critic` with the diff and the brief it was built from. Nothing
+Dispatch `critic` with the diff and the brief it was built from. Nothing
 else. The critic never sees the authoring conversation or a previous round.
 
 Mandatory for:
@@ -31,7 +31,7 @@ Mandatory for:
 
 - BLOCK or FIX FIRST: send the findings verbatim back to the implementing
   worker. Do not paraphrase. Re-verify. Run a fresh critic pass each round.
-- Maximum two loops. Then the chair takes the fix.
+- Maximum two loops. Then the Supervisor takes the fix.
 - Nits: batch them. Fix inline or via scribe. Never loop on a nit.
 
 ## 4. Reconcile
@@ -41,5 +41,5 @@ Mandatory for:
 
 ## For UI closes
 
-Add the screenshot diff from `fable-ui` step 4. Tests passing is necessary. It
+Add the screenshot diff from `ui` step 4. Tests passing is necessary. It
 is not sufficient. The built screen either matches the mockup or it does not.
