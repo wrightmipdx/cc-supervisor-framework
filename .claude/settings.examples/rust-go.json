@@ -1,0 +1,15 @@
+{
+  "$comment": "Rust and Go check commands. Merge the allow entries into .claude/settings.json.",
+  "permissions": {
+    "allow": [
+      "Bash(cargo test:*)",
+      "Bash(cargo clippy:*)",
+      "Bash(cargo fmt --check:*)",
+      "Bash(go test:*)",
+      "Bash(go vet:*)",
+      "Bash(gofmt -l:*)",
+      "Bash(make check:*)",
+      "Bash(make test:*)"
+    ]
+  }
+}

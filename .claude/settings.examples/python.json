@@ -1,0 +1,13 @@
+{
+  "$comment": "Python check commands. Merge the allow entries into .claude/settings.json.",
+  "permissions": {
+    "allow": [
+      "Bash(pytest:*)",
+      "Bash(python -m pytest:*)",
+      "Bash(ruff check:*)",
+      "Bash(ruff format --check:*)",
+      "Bash(mypy:*)",
+      "Bash(uv run pytest:*)"
+    ]
+  }
+}
