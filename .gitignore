@@ -15,5 +15,6 @@ scratch/*
 # Deliberately NOT ignored: docs/LEDGER.md and docs/LESSONS.md, which install.sh
 # seeds into a consumer repo, and docs/plans/000-template.md, which ships.
 docs/LEDGER-*.md
+docs/LESSONS.md
 docs/plans/*.md
 !docs/plans/000-template.md

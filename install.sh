@@ -326,9 +326,9 @@ seed() { [ -e "$TARGET/$2" ] && return 0
          echo "  seed      $2"; }
 echo
 echo "yours — seeded once, never touched again"
-seed "$KIT/docs/LEDGER.md"              "docs/LEDGER.md"
-seed "$KIT/docs/LESSONS.md"             "docs/LESSONS.md"
-seed "$KIT/.claude/templates/INTENT.md" "docs/INTENT.md"
+seed "$KIT/.claude/templates/LEDGER.md"  "docs/LEDGER.md"
+seed "$KIT/.claude/templates/LESSONS.md" "docs/LESSONS.md"
+seed "$KIT/.claude/templates/INTENT.md"  "docs/INTENT.md"
 if [ ! -e "$TARGET/scratch/.gitkeep" ]; then
   [ "$DRY" -eq 0 ] && { mkdir -p "$TARGET/scratch"; : > "$TARGET/scratch/.gitkeep"; }
   echo "  create    scratch/"
