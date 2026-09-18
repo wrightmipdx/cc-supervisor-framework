@@ -58,6 +58,21 @@ echo "== framework version"
 MF=.claude/.framework-manifest
 if [ -f install.sh ] && [ -f VERSION ] && [ -d .claude/templates ]; then
   ok "kit repo, version $(cat VERSION) — no manifest expected here"
+  # A path on the retired list that this release also ships is a contradiction:
+  # --adopt would delete a live file. Cheap to check, expensive to discover.
+  if [ -f retired-paths.txt ]; then
+    RC=0
+    while read -r rp _; do
+      case "$rp" in ''|\#*) continue ;; esac
+      if [ -e "$rp" ]; then
+        bad "retired-paths.txt lists $rp but this release still ships it — --adopt would delete it"
+        RC=1
+      fi
+    done < retired-paths.txt
+    [ "$RC" -eq 0 ] && ok "retired-paths.txt agrees with what this release ships"
+  else
+    warn "no retired-paths.txt — --adopt cannot remove anything a past release installed"
+  fi
 elif [ ! -f "$MF" ]; then
   warn "no $MF — installed before manifests existed, or copied by hand. 'install.sh <repo> --adopt' migrates it so upgrades can land"
 else

@@ -120,6 +120,32 @@ jobs:
           # 5. the repo's own content survived
           grep -q node_modules "$T/.gitignore" || { echo "clobbered .gitignore"; exit 1; }
 
+      # Regression: --adopt once inferred "what the last release installed" from
+      # every file in the directories it owns. .claude/agents/ and
+      # .claude/skills/ are shared with the consumer's own agents and skills, so
+      # that inference deleted their work.
+      - name: --adopt never deletes the consumer's own agents, skills or hooks
+        run: |
+          set -e
+          T="$RUNNER_TEMP/theirs"
+          mkdir -p "$T" && git -C "$T" init -q
+          git archive aebe445 | tar -x -C "$T"
+          printf -- '---\nname: dba\ndescription: ours\nmodel: sonnet\n---\nHouse rules.\n' > "$T/.claude/agents/dba.md"
+          mkdir -p "$T/.claude/skills/deploy"
+          printf -- '---\nname: deploy\ndescription: ours\n---\nStep 1.\n' > "$T/.claude/skills/deploy/SKILL.md"
+          printf '#!/usr/bin/env bash\necho ours\n' > "$T/.claude/hooks/60-notify-slack.sh"
+
+          ./install.sh "$T" --adopt
+
+          for mine in .claude/agents/dba.md .claude/skills/deploy/SKILL.md .claude/hooks/60-notify-slack.sh; do
+            [ -f "$T/$mine" ] || { echo "--adopt deleted the consumer's $mine"; exit 1; }
+          done
+          # and it still removes what the framework actually retired
+          for gone in .claude/agents/explore.md .claude/hooks/40-supervisor-budget.sh; do
+            [ -e "$T/$gone" ] && { echo "$gone not removed"; exit 1; }
+          done
+          echo ok
+
       - name: A customized framework file is never overwritten
         run: |
           set -e

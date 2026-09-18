@@ -33,6 +33,12 @@ volume into isolated worker contexts that return forty-line reports.
   files unchanged since install are the framework's to replace, files the
   consumer edited are theirs to keep. An installer that overwrites nothing is
   safe and useless; the first version of this one was exactly that.
+- **The installer never infers ownership.** It removes only what a manifest or
+  `retired-paths.txt` says it put there. `.claude/agents/` and
+  `.claude/skills/` are shared with the consumer; inferring from directory
+  contents is how an installer deletes someone's work. When you delete a file
+  the framework used to install, add it to `retired-paths.txt` — CI checks the
+  list against what the release ships.
 - **Idempotence is not upgrade.** Re-running the same release and upgrading from
   an older one look alike and fail differently. CI must cover both.
 - **Hooks fail open.** A missing `jq` makes a hook silent, never broken.

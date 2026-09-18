@@ -149,9 +149,12 @@ done
 if [ "$MODE" != install ]; then
   CURRENT="$(framework_paths)"
   if [ "$MODE" = upgrade-adopt ]; then
-    # Nothing recorded, so infer: framework-shaped files under the dirs we own.
-    OLD_PATHS="$( (cd "$TARGET" && find .claude/agents .claude/skills .claude/hooks \
-                     .claude/scripts .claude/settings.examples -type f 2>/dev/null) | sort -u)"
+    # No manifest, so we do not know what the previous release installed — and
+    # we must not infer it from the directories we own. .claude/agents/ and
+    # .claude/skills/ hold the consumer's own agents and skills too; treating
+    # everything there as ours and deleting the leftovers is data loss.
+    # retired-paths.txt is the only thing --adopt may remove.
+    OLD_PATHS="$(awk '$1 !~ /^#/ && NF {print $1}' "$KIT/retired-paths.txt" 2>/dev/null)"
   else
     OLD_PATHS="$(manifest_paths)"
   fi
@@ -198,6 +201,19 @@ if awk '$1=="conflict"' "$PLAN" | grep -q .; then
     echo "  the new one is written as .new. --force overwrites instead."
   fi
 fi
+if [ "$MODE" = upgrade-adopt ]; then
+  FOREIGN="$( (cd "$TARGET" && find .claude/agents .claude/skills .claude/hooks \
+                .claude/scripts -type f 2>/dev/null) \
+              | grep -vxF -f <(framework_paths) 2>/dev/null \
+              | grep -vxF -f <(awk '$1 !~ /^#/ && NF {print $1}' "$KIT/retired-paths.txt") 2>/dev/null || true)"
+  if [ -n "$FOREIGN" ]; then
+    echo
+    echo "  left alone — not shipped by this release and not on the retired list,"
+    echo "  so they are yours (or from a release this kit does not know about):"
+    printf '%s\n' "$FOREIGN" | sed 's/^/    /'
+  fi
+fi
+
 awk '$1=="orphan"' "$PLAN" | grep -q . && {
   echo
   echo "  orphan = removed in this release, but you had edited it. Left in place;"

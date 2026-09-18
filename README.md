@@ -49,6 +49,11 @@ and tells you to migrate:
 ~/src/supervisor/install.sh /path/to/your/repo --adopt
 ```
 
+Your own agents, skills and hooks are safe: `.claude/agents/` and
+`.claude/skills/` are shared directories, so `--adopt` never treats an unknown
+file there as the framework's. It removes only paths listed in the kit's
+`retired-paths.txt`, and prints everything it left alone.
+
 `--adopt` declares the framework files currently in your repo to be unmodified,
 writes a manifest, and upgrades — deleting what the new release dropped and
 replacing an unmarked constitution in `CLAUDE.md` with a marked block, so later

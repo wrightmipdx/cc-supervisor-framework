@@ -1,0 +1,14 @@
+# Paths that earlier releases of this framework installed and the current one
+# no longer ships.
+#
+# --adopt migrates a repo that has no manifest, so it cannot know what the
+# previous release put there. It must NOT infer that from "every file in the
+# directories we own": .claude/agents/ and .claude/skills/ are shared with the
+# consumer's own agents and skills by design, and deleting those is data loss.
+# This list is the only thing --adopt is allowed to remove.
+#
+# Add a line whenever you delete a file the framework used to install.
+#
+# <path>  <release that dropped it>
+.claude/agents/explore.md               0.2.0
+.claude/hooks/40-supervisor-budget.sh   0.2.0
