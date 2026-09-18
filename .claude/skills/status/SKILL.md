@@ -13,6 +13,7 @@ Report the state in one screen. No action. No code.
 echo "--- tree ---"; git status --short 2>/dev/null | head -20
 echo "--- last 5 commits ---"; git log --oneline -5 2>/dev/null
 echo "--- scratch ---"; ls -1 scratch 2>/dev/null | head -10
+echo "--- session ---"; .claude/scripts/metrics.sh 2>&1 | head -40
 ```
 
 Then read every live ledger — `docs/LEDGER.md` and any `docs/LEDGER-*.md`
@@ -31,9 +32,10 @@ that is not `*-archive.md`, which is the set the hooks count — plus the newest
 - clean | N files uncommitted (list them)
 ## Scratch
 - N files (stale scratch means an unclosed task)
-## Cost health
-- opus dispatches this session: N (architect: N, critic: N) — count them, do
-  not estimate token shares you cannot read
+## Cost health   (from metrics.sh, not from memory)
+- dispatches by tier, and the opus count
+- what the opus dispatches found: verdicts and blockers. A critic that returned
+  SHIP with no blockers is a downgrade candidate
 - any critic dispatch that was not in a mandatory risk category
 - any task where the Supervisor typed a long implementation itself
 ## Recommended next move

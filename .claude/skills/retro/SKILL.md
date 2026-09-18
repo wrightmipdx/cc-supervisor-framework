@@ -47,16 +47,29 @@ every future session.
 
 ## 5. Cost check
 
-Per-agent token attribution is not exposed to you. Do not estimate a split —
-a guessed number in a governance loop is worse than no number. Report what is
-countable:
+Run it, do not estimate it:
 
-- opus dispatches this session, by agent, and whether each was warranted:
-  `architect` on genuinely hard work, `critic` on a mandatory risk category
-- routine closes that went to `critic` when `reviewer` would have done
-- any task where you typed a long implementation instead of briefing it
+```!
+.claude/scripts/metrics.sh
+```
 
-Session totals come from `/cost`. If you want a real split, export OTel metrics
-— otherwise the counts above are the honest instrument.
+The hooks wrote that log during the session; you wrote nothing. Read the two
+blocks that carry a decision:
 
-Anything the counts surface becomes next session's first lesson.
+- **Opus value.** Every opus dispatch with its verdict and blocker count. A
+  `critic` that returned SHIP with no blockers on a routine close is a
+  downgrade candidate for next time. One that returned BLOCK paid for its 5x.
+  The ~25% ceiling in `CLAUDE.md` is a goal, not a gate — judge the spend
+  against what it bought, and say which way you land.
+- **Dispatch-to-report ratio.** A worker sent more often than it returned was
+  resumed. One resume is budgeted; a second means the brief was too large.
+
+Add by hand what the log cannot see: any task where you typed a long
+implementation instead of briefing it.
+
+Token cost per tier is NOT IMPLEMENTED — `metrics.sh --cost` says why, and
+`docs/METRICS.md` holds the three routes and what each needs verified first. Do
+not estimate a split. A guessed number in a governance loop is worse than no
+number.
+
+Anything the report surfaces becomes next session's first lesson.

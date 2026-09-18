@@ -63,6 +63,7 @@ framework_paths() {
   { (cd "$KIT" && find .claude/agents .claude/skills .claude/hooks .claude/scripts \
         .claude/settings.examples -type f 2>/dev/null)
     echo ".claude/install-check.sh"
+    echo "docs/METRICS.md"
     echo "docs/ROUTING.md"
     echo "docs/plans/000-template.md"
   } | sort -u
