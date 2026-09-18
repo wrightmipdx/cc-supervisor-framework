@@ -6,7 +6,7 @@ everything mechanical runs one or two tiers down, in its own context.
 Install it into a project repo:
 
 ```bash
-git clone <this-repo> ~/src/supervisor
+git clone https://github.com/wrightmipdx/cc-supervisor-framework.git ~/src/supervisor
 ~/src/supervisor/install.sh /path/to/your/repo
 ```
 
@@ -80,9 +80,15 @@ blocks. See `.claude/hooks/README.md`.
 
 ## After installing
 
+From the root of the repo you installed into:
+
 ```bash
 .claude/install-check.sh          # wiring + the one-time probe
 ```
+
+The leading `.claude/` matters — the script lives there, and shells do not
+search the current directory. `--static` skips the probe; `--probe` reprints
+just the probe brief.
 
 Then three things:
 

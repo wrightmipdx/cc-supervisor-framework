@@ -8,7 +8,7 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Shell syntax
         run: |
@@ -31,7 +31,7 @@ jobs:
       matrix:
         stack: [node, python, rust-go, none]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # The real test: a fresh install must produce a repo that passes its own
       # wiring check. install.sh runs --static itself and exits non-zero on
