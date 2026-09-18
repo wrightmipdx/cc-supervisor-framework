@@ -29,7 +29,10 @@ Explore, design, then write it down. No code until the plan exists.
   If the user said it, it is a line. If the code demands it, it is a line.
 - Copy `docs/plans/000-template.md` to
   `docs/plans/NNN-slug.md`.
-- Every task names its worker tier and carries a pre-drafted brief.
+- Every task names its worker tier, its review lane (`direct`, `reviewer`, or
+  `critic` — see `review`), and carries a pre-drafted brief. Choosing the review
+  lane at plan time, when you can see the risk, stops it being chosen by reflex
+  at close time, when opus looks like the safe default.
 - A task you cannot brief yet is too vague. Split it or sharpen it until you
   can.
 

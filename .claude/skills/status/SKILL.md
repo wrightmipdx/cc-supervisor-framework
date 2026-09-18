@@ -1,6 +1,6 @@
 ---
 name: status
-description: Show the current Supervisor state — open ledger items, active plan, recent lessons, working tree, and the routing health check. Use when resuming after a break, after a compaction, or when the user asks where things stand.
+description: Show the current Supervisor state — open ledger items, active plan, recent lessons, working tree, and the cost health check. Use when resuming after a break, after a compaction, or when the user asks where things stand.
 disable-model-invocation: false
 allowed-tools: Read, Glob, Bash(git status:*), Bash(git log:*), Bash(ls:*)
 ---
@@ -30,8 +30,11 @@ Then read `docs/LEDGER.md`, the newest 10 lines of
 - clean | N files uncommitted (list them)
 ## Scratch
 - N files (stale scratch means an unclosed task)
-## Routing health
-- Supervisor share estimate, and any task that leaked keystrokes upward
+## Cost health
+- opus dispatches this session: N (architect: N, critic: N) — count them, do
+  not estimate token shares you cannot read
+- any critic dispatch that was not in a mandatory risk category
+- any task where the Supervisor typed a long implementation itself
 ## Recommended next move
 - one line
 ```

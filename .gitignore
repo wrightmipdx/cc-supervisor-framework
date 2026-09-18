@@ -1,0 +1,8 @@
+# Scratch is the shared workspace between the Supervisor and its workers.
+# Traceable during a session, gone at retro. Never committed.
+scratch/*
+!scratch/.gitkeep
+
+# macOS
+.DS_Store
+**/.DS_Store

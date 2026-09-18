@@ -29,7 +29,7 @@ printf '%s' "$COUNT" > "$STATE" 2>/dev/null
 jq -n --arg n "$COUNT" '{
   hookSpecificOutput: {
     hookEventName: "PostToolUse",
-    additionalContext: ("SUPERVISOR: " + $n + " file edits so far this session. If most of them are yours rather than a worker'"'"'s, routing has failed — you are typing, not judging. Check the routing table in CLAUDE.md and delegate the next unit of work with a brief.")
+    additionalContext: ("SUPERVISOR: " + $n + " file edits so far this session (workers included — hooks fire inside subagents, so this number is a smoke alarm, not an audit). Only act on it if most of them are yours AND they belong to one long implementation. Small edits inline are correct: volume decides delegation, not difficulty. See prime rule 1 in CLAUDE.md.")
   }
 }'
 exit 0

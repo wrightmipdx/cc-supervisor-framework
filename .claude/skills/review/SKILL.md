@@ -1,6 +1,6 @@
 ---
 name: review
-description: Verification of a worker's close — the Supervisor reads the diff and runs the checks, then a fresh-eyes critic pass on non-trivial changes. Use before every commit of substance.
+description: Verification of a worker's close — the Supervisor reads the diff and runs the checks, then a fresh-eyes review pass. Routine diffs go to reviewer (sonnet); risk-category diffs go to critic (opus). Use before every commit of substance.
 allowed-tools: Read, Glob, Grep, Bash(git diff:*), Bash(git status:*), Bash(git show:*)
 ---
 
@@ -13,31 +13,53 @@ Fresh eyes on every close. Workers are confident, not correct.
 - Run the done-when checks yourself. Output you saw with your own eyes, or it
   did not happen.
 - A worker's pasted output is a claim. Your own run is evidence.
+- **Keep the output small.** You are the most expensive context in the session
+  and everything you read is re-billed on every later turn. Use quiet
+  reporters and tail the result — `npm test -- --reporter=dot | tail -20`. You
+  need the pass/fail lines, not the log.
 
-## 2. Fresh-eyes critic — non-trivial closes
+## 2. Fresh eyes — every non-trivial close
 
-Dispatch `critic` with the diff and the brief it was built from. Nothing
-else. The critic never sees the authoring conversation or a previous round.
+The reviewer gets the diff and the brief it was built from. Nothing else. It
+never sees the authoring conversation or a previous round.
 
-Mandatory for:
+Pick the lane by **risk, not by size**. A 300-line test fixture is routine; a
+12-line auth change is not.
 
-- security, auth, money, data loss, public API contracts
-- new modules
-- concurrency
-- more than roughly 50 changed lines
-- anything you are not sure of
+| Lane | When |
+|---|---|
+| None | The change went through the direct lane: ≤2 files, ≤~50 lines, cause known, tests already existed |
+| `reviewer` (sonnet) | The default. Any other non-trivial close |
+| `critic` (opus) | Mandatory for the risk categories below, and for anything you are genuinely unsure of |
+
+**Critic is mandatory for:**
+
+- security, auth, permissions, secrets
+- money, billing, quotas
+- data loss, migrations, destructive operations
+- public API contracts and wire formats
+- concurrency, locking, async ordering
+- a new module or subsystem
+
+If `reviewer` returns "Escalate to critic: yes", escalate. Do not overrule it.
+
+Line count is not a trigger. Size tells you how long the review takes, not how
+much it matters.
 
 ## 3. Fix loop
 
 - BLOCK or FIX FIRST: send the findings verbatim back to the implementing
-  worker. Do not paraphrase. Re-verify. Run a fresh critic pass each round.
+  worker. Do not paraphrase. Re-verify. Run a fresh review pass each round, in
+  the same lane.
 - Maximum two loops. Then the Supervisor takes the fix.
-- Nits: batch them. Fix inline or via scribe. Never loop on a nit.
+- Nits: batch them. Fix inline. Never loop on a nit.
 
 ## 4. Reconcile
 
 - Mark the ledger item `[x]` only now. Verified, not asserted.
-- Record the verdict and any residual risk in the plan's task entry.
+- Record the lane used, the verdict, and any residual risk in the plan's task
+  entry. The lane is part of the audit trail — a later session needs to know a
+  close was reviewed on sonnet.
 
 ## For UI closes
 

@@ -33,11 +33,33 @@ after scouting.
 | The request is | Lane |
 |---|---|
 | Trivial, a one-sentence diff | Do it inline, then `commit` |
-| A single well-specified task | Light scout pass → brief → dispatch |
+| Small and known — ≤2 files, ≤~50 lines, cause understood, tests already exist | **Direct lane** (below) |
+| A single well-specified task, larger than that | Light scout pass → brief → dispatch |
 | A feature or multi-step change | `plan` |
 | A failure with an unknown cause | `debug` |
 | UI work with a mockup involved | `ui` |
 
+## The direct lane
+
+Most real work is small. Briefing a small change costs more than making it, and
+it discards the context that made it easy. So: edit inline, run the checks, read
+your own diff, commit. No ledger, no brief, no review dispatch.
+
+The lane has a bound, and the bound is the whole point:
+
+- ≤ 2 files and ≤ ~50 lines changed
+- you already know the cause — you are not exploring
+- the tests that cover it already exist
+- it is not in a review risk category (security, auth, money, data loss, public
+  API, concurrency, a new module). Those close through `review` no matter how
+  small the diff
+
+**If the change grows past the bound mid-flight, stop.** Do not finish it on
+momentum. Revert or park what you have, and re-enter through `plan` or a brief.
+A direct-lane change that quietly became a feature is the most common way this
+framework fails.
+
 ## Hard rule
 
-No code during intake. None.
+No code during intake, except a change you have already placed in the direct
+lane. Exploration is never code.

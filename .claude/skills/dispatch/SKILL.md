@@ -39,18 +39,24 @@ Stripping the judgment out is your whole job.
    builder → architect → Supervisor. Stop dispatching a task you have failed twice
    to specify.
 6. **Workers never commit.** The chair integrates and commits.
-7. **Do not delegate trivia.** If you could make the edit in one tool call, do
-   it inline.
+7. **Do not delegate trivia.** Volume decides delegation, not difficulty. If the
+   change fits the direct lane — ≤2 files, ≤~50 lines, cause known, tests exist —
+   make it yourself. A brief for a five-line fix costs more than the fix and
+   throws away the context that made it easy.
 8. **Refusals.** Re-run the task unchanged on another tier. Never reword to
    slide past a classifier. Two declines: tell the user.
 
 ## Tier costs — the reason this exists
 
-| Tier | Use it for | Do not use it for |
-|---|---|---|
-| haiku (scout, scribe) | Finding, listing, mechanical prose | Anything needing a decision |
-| sonnet (cartographer, builder, designer) | Briefed implementation, explanation | Unspecified problems |
-| opus (architect, critic) | The hard 10 percent, all review | Bulk work, routine edits |
+| Tier | Approx cost | Use it for | Do not use it for |
+|---|---|---|---|
+| haiku (scout, scribe) | ~0.25x sonnet | Finding, listing, bulk prose | Anything needing a decision |
+| sonnet (cartographer, builder, designer, reviewer) | 1x | Briefed implementation, explanation, routine review | Unspecified problems |
+| opus (architect, critic) | ~5x sonnet | The hard 10 percent, risk-category review | Bulk work, routine edits, routine review |
+
+The opus row is the bill. A 15 percent opus token share is roughly half the
+session's cost, so every opus dispatch is a deliberate purchase. Routine review
+belongs to `reviewer`; `critic` is for the categories `review` makes mandatory.
 
 Over-instructing a cheap tier is a coin flip. Haiku with a tight single-purpose
 brief is reliable. Haiku holding a judgment call is not.

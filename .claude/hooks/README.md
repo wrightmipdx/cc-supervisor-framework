@@ -19,8 +19,15 @@ failure modes that discipline alone does not survive.
 
 ## Behavior
 
-- Only `30-commit-gate.sh` blocks, and only on blind staging
-  (`git add -A`, `git add .`, `git commit -a`). Everything else injects context.
+- Only `30-commit-gate.sh` blocks, and only on blind staging. Its matching is
+  token-based: it ignores heredoc bodies, strips quoted spans, inspects only
+  segments that actually invoke git, and requires an exact token to call a
+  staging target blind. An explicit path (`git add .gitignore`), a commit
+  message quoting the phrase, or a grep for it all pass. Everything else injects
+  context.
+- `.claude/hooks/test-commit-gate.sh` covers that behavior — 22 cases, blind
+  staging and the false positives that an earlier substring-matching version
+  denied. Run it after touching the gate.
 - The pre-delegate and stop hooks fire once per session, tracked by a flag file
   in `$TMPDIR` keyed on the session ID.
 - `40-supervisor-budget.sh` counts edits from workers too, because hooks fire inside
@@ -37,11 +44,16 @@ failure modes that discipline alone does not survive.
 ## Testing a hook by hand
 
 ```bash
-echo '{"session_id":"test","tool_name":"Bash","tool_input":{"command":"git add -A"}}' \
-  | .claude/hooks/30-commit-gate.sh
+.claude/hooks/test-commit-gate.sh          # the whole suite
 ```
 
-Expect a `permissionDecision: "deny"` JSON object on stdout.
+For a single case, feed it a payload on stdin and expect a
+`permissionDecision: "deny"` JSON object on stdout:
+
+```bash
+jq -n '{session_id:"test",tool_name:"Bash",tool_input:{command:$ARGS.positional[0]}}' \
+  --args 'git add --all' | .claude/hooks/30-commit-gate.sh
+```
 
 ## Field-name note
 

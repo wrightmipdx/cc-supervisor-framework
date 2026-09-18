@@ -1,6 +1,6 @@
 ---
 name: retro
-description: Session close for the Supervisor — reconcile the ledger, run the success criteria, write lessons, archive, and hand off cleanly. Use at the end of a session and when a plan finishes or is abandoned.
+description: Session close for the Supervisor — reconcile the ledger, run the success criteria, write lessons, check the opus spend, archive, and hand off cleanly. Use at the end of a session and when a plan finishes or is abandoned.
 ---
 
 Close the session like an engineer.
@@ -40,8 +40,18 @@ every future session.
   `LEDGER-<topic>-archive.md`.
 - `LESSONS.md` over roughly 40 lines: prune it now.
 
-## 5. Routing check
+## 5. Cost check
 
-Report the session's token split if you have it. Supervisor above roughly 20 percent
-means decomposition leaked keystrokes upward. Name the task where it happened.
-That is next session's first lesson.
+Per-agent token attribution is not exposed to you. Do not estimate a split —
+a guessed number in a governance loop is worse than no number. Report what is
+countable:
+
+- opus dispatches this session, by agent, and whether each was warranted:
+  `architect` on genuinely hard work, `critic` on a mandatory risk category
+- routine closes that went to `critic` when `reviewer` would have done
+- any task where you typed a long implementation instead of briefing it
+
+Session totals come from `/cost`. If you want a real split, export OTel metrics
+— otherwise the counts above are the honest instrument.
+
+Anything the counts surface becomes next session's first lesson.
