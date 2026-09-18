@@ -68,3 +68,70 @@ jobs:
             || { echo "clobbered the project's own settings.json"; exit 1; }
           test -f "$RUNNER_TEMP/occupied/.claude/settings.json.new" \
             || { echo "no merged settings written for review"; exit 1; }
+
+  upgrade:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      # The test that was missing: install an OLD release, then upgrade to HEAD.
+      # Re-running the same version is idempotence, not upgrade, and the two
+      # look alike right up until an upgrade silently fails to land.
+      - name: Migrate a pre-manifest install, then upgrade
+        run: |
+          set -e
+          OLD=aebe445   # last release before manifests existed
+          T="$RUNNER_TEMP/legacy"
+          mkdir -p "$T" && git -C "$T" init -q
+          git archive "$OLD" | tar -x -C "$T"
+          printf 'node_modules\n' > "$T/.gitignore"
+          echo '{}' > "$T/package.json"
+
+          # Without --adopt it must refuse rather than guess.
+          if ./install.sh "$T" >/dev/null 2>&1; then
+            echo "installer did not refuse a pre-manifest repo"; exit 1
+          fi
+
+          ./install.sh "$T" --adopt
+
+          # 1. exactly one constitution, and it is the new one
+          [ "$(grep -c '^# SUPERVISOR' "$T/CLAUDE.md")" -eq 1 ] || { echo "not exactly one constitution"; exit 1; }
+          grep -q 'Volume decides whether to delegate' "$T/CLAUDE.md" || { echo "new prime rule 1 missing"; exit 1; }
+          grep -q 'Judge, do not type' "$T/CLAUDE.md" && { echo "old prime rule 1 still present"; exit 1; }
+
+          # 2. files removed upstream are gone, and nothing still wires them
+          for gone in .claude/agents/explore.md .claude/hooks/40-supervisor-budget.sh; do
+            [ -e "$T/$gone" ] && { echo "$gone survived the upgrade"; exit 1; }
+          done
+          grep -q '40-supervisor-budget' "$T/.claude/settings.json" && { echo "stale hook still wired"; exit 1; }
+
+          # 3. the repaired hook is the LIVE one, not sitting in .new
+          printf '%s' '{"session_id":"t","tool_input":{"command":"git add .gitignore"}}' > "$RUNNER_TEMP/p.json"
+          if bash "$T/.claude/hooks/30-commit-gate.sh" < "$RUNNER_TEMP/p.json" | grep -q deny; then
+            echo "upgrade did not land: the old commit gate is still live"; exit 1
+          fi
+
+          # 4. a clean upgrade leaves no manual merges
+          n=$(find "$T" -name '*.new' | wc -l)
+          [ "$n" -eq 0 ] || { echo "$n .new file(s) after a clean upgrade"; exit 1; }
+
+          # 5. the repo's own content survived
+          grep -q node_modules "$T/.gitignore" || { echo "clobbered .gitignore"; exit 1; }
+
+      - name: A customized framework file is never overwritten
+        run: |
+          set -e
+          T="$RUNNER_TEMP/custom"
+          mkdir -p "$T" && git -C "$T" init -q
+          ./install.sh "$T" --stack none >/dev/null
+          printf '\n- Local rule.\n' >> "$T/.claude/agents/scout.md"
+          jq '.permissions.allow += ["Bash(make:*)"]' "$T/.claude/settings.json" > "$T/s" && mv "$T/s" "$T/.claude/settings.json"
+          ./install.sh "$T" --stack none
+          grep -q 'Local rule' "$T/.claude/agents/scout.md" || { echo "overwrote a local edit"; exit 1; }
+          grep -q 'Bash(make:\*)' "$T/.claude/settings.json" || { echo "destroyed customized settings.json"; exit 1; }
+          test -f "$T/.claude/agents/scout.md.new" || { echo "no .new offered for the conflict"; exit 1; }
+          ./install.sh "$T" --stack none --force >/dev/null
+          grep -q 'Local rule' "$T/.claude/agents/scout.md" && { echo "--force did not overwrite"; exit 1; }
+          echo "ok"

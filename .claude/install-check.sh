@@ -54,6 +54,29 @@ if [ -x .claude/hooks/test-commit-gate.sh ]; then
 fi
 
 echo
+echo "== framework version"
+MF=.claude/.framework-manifest
+if [ -f install.sh ] && [ -f VERSION ] && [ -d .claude/templates ]; then
+  ok "kit repo, version $(cat VERSION) — no manifest expected here"
+elif [ ! -f "$MF" ]; then
+  warn "no $MF — installed before manifests existed, or copied by hand. 'install.sh <repo> --adopt' migrates it so upgrades can land"
+else
+  ok "version $(awk '$1=="version"{print $2}' "$MF") (stack $(awk '$1=="stack"{print $2}' "$MF"))"
+  sha() { if command -v shasum >/dev/null 2>&1; then shasum -a 256 "$1" | awk '{print $1}'
+          else sha256sum "$1" | awk '{print $1}'; fi; }
+  DRIFT=0
+  while read -r want path; do
+    case "$want" in [0-9a-f]*) ;; *) continue ;; esac
+    [ "${#want}" -eq 64 ] || continue
+    if [ ! -f "$path" ]; then warn "$path is in the manifest but missing — an upgrade will reinstall it"; DRIFT=$((DRIFT+1))
+    elif [ "$(sha "$path")" != "$want" ]; then
+      warn "$path modified locally — an upgrade will keep yours and write .new"; DRIFT=$((DRIFT+1))
+    fi
+  done < "$MF"
+  [ "$DRIFT" -eq 0 ] && ok "no local drift — every framework file matches the manifest"
+fi
+
+echo
 echo "== agents"
 for f in .claude/agents/*.md; do
   base=$(basename "$f" .md)

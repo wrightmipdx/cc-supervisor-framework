@@ -28,8 +28,13 @@ volume into isolated worker contexts that return forty-line reports.
 
 ## Constraints that are not negotiable
 
-- **Re-running `install.sh` must never destroy a consumer's work.** It is the
-  upgrade path. Nothing is overwritten; differences land as `.new`.
+- **`install.sh` must never destroy a consumer's work — and must still be able
+  to upgrade.** Those pull against each other, which is why the manifest exists:
+  files unchanged since install are the framework's to replace, files the
+  consumer edited are theirs to keep. An installer that overwrites nothing is
+  safe and useless; the first version of this one was exactly that.
+- **Idempotence is not upgrade.** Re-running the same release and upgrading from
+  an older one look alike and fail differently. CI must cover both.
 - **Hooks fail open.** A missing `jq` makes a hook silent, never broken.
 - **No claim without evidence.** Anything asserted in the docs about token cost
   or harness behavior is either measured, arithmetic shown, or marked as

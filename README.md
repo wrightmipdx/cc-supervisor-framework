@@ -10,7 +10,52 @@ git clone https://github.com/wrightmipdx/cc-supervisor-framework.git ~/src/super
 ~/src/supervisor/install.sh /path/to/your/repo
 ```
 
-Re-run it to upgrade. Nothing you have written is ever overwritten.
+## Upgrading
+
+```bash
+git -C ~/src/supervisor pull
+~/src/supervisor/install.sh /path/to/your/repo --dry-run   # see the plan
+~/src/supervisor/install.sh /path/to/your/repo
+```
+
+The install writes `.claude/.framework-manifest`: the version, the stack, and a
+hash per file. That is what lets an upgrade tell **your** edits from the
+previous version's files, which is the whole problem — a "never overwrite
+anything" installer cannot upgrade, because every changed file piles up as
+`.new` while the old one keeps running.
+
+| Case | What happens |
+|---|---|
+| Unchanged since install | Overwritten with the new version |
+| You edited it | Yours is kept, the new one written as `.new`, flagged as a conflict |
+| Removed in the new release | Deleted — unless you had edited it, then kept and flagged |
+| `CLAUDE.md` | Only the marked framework block is replaced. Your own sections are untouched |
+| `settings.json`, `LEDGER`, `LESSONS`, `INTENT`, `.gitignore` | Yours. Seeded once, then never touched |
+
+The promise is *nothing you wrote is overwritten* — not *nothing is
+overwritten*. `--force` overwrites your edits too; `--dry-run` prints the plan
+and writes nothing.
+
+`.claude/install-check.sh` reports local drift, so you can see which framework
+files you have customized before an upgrade turns them into conflicts.
+
+### Migrating an install that predates manifests
+
+An older install has no manifest, so the installer refuses rather than guess,
+and tells you to migrate:
+
+```bash
+~/src/supervisor/install.sh /path/to/your/repo --adopt --dry-run
+~/src/supervisor/install.sh /path/to/your/repo --adopt
+```
+
+`--adopt` declares the framework files currently in your repo to be unmodified,
+writes a manifest, and upgrades — deleting what the new release dropped and
+replacing an unmarked constitution in `CLAUDE.md` with a marked block, so later
+upgrades land cleanly. **Commit first.** If you had customized a framework file,
+`--adopt` overwrites it; `git diff` afterwards is the safety net. If content
+follows the old constitution in `CLAUDE.md`, the installer will not guess where
+it ends — it says so and leaves the file alone.
 
 ## What it actually buys you
 

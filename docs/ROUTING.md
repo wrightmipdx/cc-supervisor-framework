@@ -72,6 +72,7 @@ and record it in `docs/LESSONS.md`.
 | 12 | Govern cost by opus-tier share, not chair share; tokens are not dollars | This framework's own arithmetic — see "What the split really costs" |
 | 13 | A bounded direct lane: briefing a five-line fix costs more than the fix | Correction to #1 after review; volume decides delegation, difficulty decides tier |
 | 14 | Verify the harness honors a frontmatter key before relying on it | `.claude/install-check.sh`; unsupported keys are ignored silently |
+| 15 | An installer needs a manifest to distinguish the consumer's edits from the last release's files | Built after the first installer proved unable to upgrade anything |
 
 ## Architecture
 
