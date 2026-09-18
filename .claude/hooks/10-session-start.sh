@@ -9,7 +9,11 @@ set -uo pipefail
 
 DOCS="${DOCS:-docs}"
 ROOT="${CLAUDE_PROJECT_DIR:-.}"
+# Resolve the library before cd, so it is found however we were invoked.
+LIB="$(cd "$(dirname "$0")" 2>/dev/null && pwd)/lib"
 cd "$ROOT" 2>/dev/null || exit 0
+# Fail open: a missing library leaves the hook silent, never broken.
+. "$LIB/ledger.sh" 2>/dev/null || exit 0
 
 command -v jq >/dev/null 2>&1 || exit 0
 
@@ -29,20 +33,20 @@ ${LESSONS}
 fi
 
 # --- ledger ------------------------------------------------------------------
-for LEDGER in "$DOCS"/LEDGER.md "$DOCS"/LEDGER-*.md; do
-  [ -f "$LEDGER" ] || continue
-  case "$LEDGER" in *-archive.md) continue ;; esac
-  OPEN=$(grep -c "^${SP}*-${SP}\[ \]" "$LEDGER" 2>/dev/null || true)
-  DONE=$(grep -c "^${SP}*-${SP}\[x\]" "$LEDGER" 2>/dev/null || true)
-  OPEN=${OPEN:-0}; DONE=${DONE:-0}
+while IFS= read -r LEDGER; do
+  [ -n "$LEDGER" ] || continue
+  OPEN=$(ledger_count_open "$LEDGER")
+  DONE=$(ledger_count_done "$LEDGER")
   if [ "$OPEN" -gt 0 ]; then
-    ITEMS=$(grep "^${SP}*-${SP}\[ \]" "$LEDGER" | head -10 || true)
+    ITEMS=$(ledger_open_items "$LEDGER" 10)
     CTX="${CTX}## Open ledger — ${LEDGER} (${OPEN} open, ${DONE} verified)
 ${ITEMS}
 
 "
   fi
-done
+done <<EOF
+$(ledger_files)
+EOF
 
 # --- active plan -------------------------------------------------------------
 if [ -d "$DOCS/plans" ]; then

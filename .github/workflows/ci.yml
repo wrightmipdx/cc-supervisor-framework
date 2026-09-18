@@ -12,15 +12,16 @@ jobs:
 
       - name: Shell syntax
         run: |
-          for f in ./*.sh .claude/install-check.sh .claude/hooks/*.sh; do
+          for f in ./*.sh .claude/install-check.sh .claude/hooks/*.sh .claude/hooks/lib/*.sh; do
             bash -n "$f" || exit 1
           done
 
       - name: Shellcheck
-        run: shellcheck -S warning ./*.sh .claude/install-check.sh .claude/hooks/*.sh
+        run: shellcheck -S warning ./*.sh .claude/install-check.sh .claude/hooks/*.sh .claude/hooks/lib/*.sh
 
-      - name: Commit-gate behavior
-        run: .claude/hooks/test-commit-gate.sh
+      - name: Hook behavior suites
+        run: |
+          for t in .claude/hooks/test-*.sh; do echo "== $t"; "$t" || exit 1; done
 
       - name: CLAUDE.md decision matrix and renamed-fork guard
         run: ./test-install-claudemd.sh

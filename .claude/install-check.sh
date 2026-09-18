@@ -48,9 +48,37 @@ for f in .claude/hooks/*.sh; do
   grep -q "$(basename "$f")" .claude/settings.json \
     || warn "$f is not wired into settings.json — it will never fire. If you kept your own settings at install time, adopt .claude/settings.json.new"
 done
-if [ -x .claude/hooks/test-commit-gate.sh ]; then
-  if .claude/hooks/test-commit-gate.sh >/dev/null 2>&1; then ok "commit-gate tests pass"
-  else bad "commit-gate tests FAIL — run .claude/hooks/test-commit-gate.sh"; fi
+for t in test-commit-gate test-ledger-parse test-lessons-parse test-metrics test-stop-retro; do
+  [ -x ".claude/hooks/$t.sh" ] || continue
+  if ".claude/hooks/$t.sh" >/dev/null 2>&1; then ok "$t passes"
+  else bad "$t FAILS — run .claude/hooks/$t.sh"; fi
+done
+
+echo
+echo "== ledger parses"
+# The failure this catches: a ledger full of requirements that the hooks count
+# as zero. Every hook then stays silent and the mechanism is gone with no
+# symptom. It went unnoticed once already; it does not get to happen twice.
+if [ -f .claude/hooks/lib/ledger.sh ]; then
+  # shellcheck disable=SC1091
+  . .claude/hooks/lib/ledger.sh
+  FOUND=0
+  while IFS= read -r L; do
+    [ -n "$L" ] || continue
+    FOUND=1
+    LOOSE=$(ledger_count_looks_like "$L")
+    REAL=$(( $(ledger_count_open "$L") + $(ledger_count_done "$L") + $(ledger_count_deferred "$L") ))
+    if [ "$LOOSE" -gt 0 ] && [ "$REAL" -eq 0 ]; then
+      bad "$L has $LOOSE checkbox-shaped line(s) the parser counts as 0 — the hooks are blind to this ledger"
+    else
+      ok "$L ($REAL requirement(s) parsed)"
+    fi
+  done <<EOF
+$(ledger_files)
+EOF
+  [ "$FOUND" -eq 0 ] && warn "no ledger in ${DOCS:-docs}/ yet — the plan skill writes one"
+else
+  bad ".claude/hooks/lib/ledger.sh missing — every hook that reads a ledger fails open and stays silent"
 fi
 
 echo

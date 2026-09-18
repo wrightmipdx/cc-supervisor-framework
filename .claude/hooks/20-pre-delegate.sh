@@ -9,7 +9,11 @@ set -uo pipefail
 
 DOCS="${DOCS:-docs}"
 ROOT="${CLAUDE_PROJECT_DIR:-.}"
+# Resolve the library before cd, so it is found however we were invoked.
+LIB="$(cd "$(dirname "$0")" 2>/dev/null && pwd)/lib"
 cd "$ROOT" 2>/dev/null || exit 0
+# Fail open: a missing library leaves the hook silent, never broken.
+. "$LIB/ledger.sh" 2>/dev/null || exit 0
 
 command -v jq >/dev/null 2>&1 || exit 0
 
@@ -21,14 +25,12 @@ FLAG="${TMPDIR:-/tmp}/ledger-warned-${SESSION}"
 [ -f "$FLAG" ] && exit 0
 
 HAS_ITEMS=0
-for LEDGER in "$DOCS"/LEDGER.md "$DOCS"/LEDGER-*.md; do
-  [ -f "$LEDGER" ] || continue
-  case "$LEDGER" in *-archive.md) continue ;; esac
-  if grep -q "^[[:space:]]*-[[:space:]]\[[ x~]\]" "$LEDGER" 2>/dev/null; then
-    HAS_ITEMS=1
-    break
-  fi
-done
+while IFS= read -r LEDGER; do
+  [ -n "$LEDGER" ] || continue
+  if ledger_has_items "$LEDGER"; then HAS_ITEMS=1; break; fi
+done <<EOF
+$(ledger_files)
+EOF
 
 [ "$HAS_ITEMS" -eq 1 ] && exit 0
 

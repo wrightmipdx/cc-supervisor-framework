@@ -22,7 +22,11 @@ set -uo pipefail
 
 DOCS="${DOCS:-docs}"
 ROOT="${CLAUDE_PROJECT_DIR:-.}"
+# Resolve the library before cd, so it is found however we were invoked.
+LIB="$(cd "$(dirname "$0")" 2>/dev/null && pwd)/lib"
 cd "$ROOT" 2>/dev/null || exit 0
+# Fail open: a missing library leaves the hook silent, never broken.
+. "$LIB/ledger.sh" 2>/dev/null || exit 0
 
 command -v jq >/dev/null 2>&1 || exit 0
 
@@ -162,13 +166,7 @@ EOF
 # --- open ledger on commit ---------------------------------------------------
 [ "$IS_COMMIT" -eq 1 ] || exit 0
 
-OPEN=0
-for LEDGER in "$DOCS"/LEDGER.md "$DOCS"/LEDGER-*.md; do
-  [ -f "$LEDGER" ] || continue
-  case "$LEDGER" in *-archive.md) continue ;; esac
-  N=$(grep -c "^[[:space:]]*-[[:space:]]\[ \]" "$LEDGER" 2>/dev/null || true); N=${N:-0}
-  OPEN=$((OPEN + N))
-done
+OPEN=$(ledger_total_open)
 
 [ "$OPEN" -eq 0 ] && exit 0
 
