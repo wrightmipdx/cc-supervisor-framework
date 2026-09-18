@@ -1,7 +1,7 @@
 # Supervisor hooks
 
-Instructions are advice. Hooks are mechanism. These four fence the failure
-modes that discipline alone does not survive.
+Instructions are advice. Hooks are mechanism. These fence the failure modes that
+discipline alone does not survive.
 
 | Hook | Event | Fences |
 |---|---|---|
@@ -9,6 +9,44 @@ modes that discipline alone does not survive.
 | `20-pre-delegate.sh` | PreToolUse `Agent\|Task` | Delegating without a ledger |
 | `30-commit-gate.sh` | PreToolUse `Bash` | Blind staging; closing with open requirements |
 | `50-stop-retro.sh` | Stop | Ending a session without a retro |
+| `60-dispatch-end.sh` | SubagentStop, PostToolUse `Agent\|Task` | Nothing — it only measures |
+| `70-commit-landed.sh` | PostToolUse `Bash` | Nothing — it only measures |
+
+Shared code lives in `lib/`: `ledger.sh` parses requirement checkboxes,
+`lessons.sh` reassembles wrapped lessons, `metrics.sh` writes the event log.
+Every hook sources what it needs and exits 0 if the source fails.
+
+## The event log
+
+`10`, `20`, `30`, `60` and `70` append one JSON line per event to
+`.metrics/session-<id>.jsonl`, which is gitignored.
+`.claude/scripts/metrics.sh` reads it and `docs/METRICS.md` documents it. The
+Supervisor never writes a metric: bookkeeping in the chair's context costs
+chair tokens, which is the thing being measured.
+
+**Sizes, counts and verdicts only.** Never a brief, never a report, never a
+diff. A test asserts that no brief or report text reaches the log.
+
+**Attribution is stated, never guessed.** Hooks fire inside subagents too, which
+is why the old edit-budget hook was removed. Every event carries an `origin`:
+
+| origin | Meaning |
+|---|---|
+| `main` | Provably the main session — the source does not fire in a subagent, or no worker was in flight |
+| `ambiguous` | A worker was in flight, so the Supervisor and the worker are indistinguishable here |
+| `repo` | A fact about the repository, not any agent: HEAD moved |
+
+`30-commit-gate.sh` runs on every Bash call including a worker's, so its
+`commit_attempt` events are the ones that go `ambiguous`. If the dispatch-end
+source does not fire in your version, the in-flight count never returns to zero
+and everything after the first dispatch reads `ambiguous` — degraded, and
+honestly so.
+
+`60-dispatch-end.sh` is wired to two events on purpose. Which one a given Claude
+Code version fires cannot be checked from a script, and `docs/INTENT.md` forbids
+depending on a feature that cannot be verified at install time. Each event
+records its `source`, and `metrics.sh` counts one source only, so wiring both
+can never double count.
 
 ## Related
 
@@ -33,8 +71,9 @@ suite. Run it after an upgrade.
 - `.claude/hooks/test-commit-gate.sh` covers that behavior — 26 cases: blind
   staging, the commands a heredoc must not hide, and the false positives that an
   earlier substring-matching version denied. Run it after touching the gate.
-- The pre-delegate and stop hooks fire once per session, tracked by a flag file
-  in `$TMPDIR` keyed on the session ID.
+- The pre-delegate hook warns once per session, tracked by a flag file in
+  `$TMPDIR` keyed on the session ID. It still logs every dispatch: logging
+  happens before the early exits, not after them.
 - There is deliberately no edit-budget hook. An earlier version counted
   Edit/Write calls to catch the Supervisor implementing solo, but hooks fire
   inside subagents too, so one builder tripped it unaided. A hook that fires on
@@ -44,7 +83,8 @@ suite. Run it after an upgrade.
 
 ## Tuning
 
-- Docs location: change `DOCS` in the same place.
+- Docs location: `DOCS` in the `env` block of `settings.json`.
+- Event log location: `METRICS_DIR`, default `.metrics`.
 - Turn one off: delete its block from the `hooks` key in `settings.json`.
 - Turn all off for one session: set `"disableAllHooks": true`.
 

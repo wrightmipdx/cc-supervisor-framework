@@ -174,6 +174,29 @@ if [ "$MODE" = static ]; then
   [ "$FAIL" -eq 0 ]; exit
 fi
 
+echo "== PROBE — the dispatch-end event source"
+DE=$(jq -r '.hooks | to_entries[] | .key as $k | .value[] | select(.hooks[].command | test("60-dispatch-end")) | $k' \
+     .claude/settings.json 2>/dev/null | sort -u | tr '\n' ' ')
+cat <<DEPROBE
+  60-dispatch-end.sh is wired to: ${DE:-nothing}
+  Which of those your Claude Code version actually fires cannot be read from a
+  script. Both are wired and each event records its source; metrics.sh counts
+  one source only, so wiring both cannot double count.
+
+  After your next session that dispatches a worker, check:
+
+    jq -r 'select(.event=="dispatch_end") | .source' .metrics/session-*.jsonl | sort | uniq -c
+
+  post_tool_use is the better source: its payload carries the report, which is
+  where the verdict and findings counts come from. subagent_stop usually
+  records completion only. NEITHER appearing means this version fires neither —
+  metrics.sh then reports the dispatch-to-report ratio and the opus value report
+  as unavailable rather than computing them from a missing event, and every
+  event after the first dispatch is attributed 'ambiguous'. Record what you see
+  in docs/LESSONS.md.
+
+DEPROBE
+
 echo "== PROBE — frontmatter keys this script cannot verify"
 KEYS=$(grep -ho '^\(effort\|maxTurns\|omitClaudeMd\|skills\):' .claude/agents/*.md | sort -u | tr -d ':' | tr '\n' ' ')
 cat <<PROBE

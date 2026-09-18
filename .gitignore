@@ -3,6 +3,11 @@
 scratch/*
 !scratch/.gitkeep
 
+# Hook-written session event log. Counts and shapes, never content — but it is
+# per-machine working data, not something to commit. .claude/scripts/metrics.sh
+# reads it; docs/METRICS.md documents it.
+.metrics/
+
 # macOS
 .DS_Store
 **/.DS_Store

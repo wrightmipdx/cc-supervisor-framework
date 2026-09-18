@@ -15,8 +15,21 @@ cd "$ROOT" 2>/dev/null || exit 0
 # Fail open: a missing library leaves the hook silent, never broken.
 . "$LIB/ledger.sh" 2>/dev/null || exit 0
 . "$LIB/lessons.sh" 2>/dev/null || exit 0
+. "$LIB/metrics.sh" 2>/dev/null || exit 0
 
 command -v jq >/dev/null 2>&1 || exit 0
+
+# SessionStart does not fire inside a subagent, so this event is provably the
+# main session's. Logged before anything else can go wrong.
+[ -t 0 ] || INPUT=$(cat)
+INPUT="${INPUT:-{\}}"
+SESSION=$(printf '%s' "$INPUT" | jq -r '.session_id // "nosession"' 2>/dev/null || printf nosession)
+metrics_init "$SESSION"
+METRICS_ORIGIN=main metrics_event session_start "$(jq -cn \
+  --arg head "$(git rev-parse --short HEAD 2>/dev/null || printf '')" \
+  --arg branch "$(git rev-parse --abbrev-ref HEAD 2>/dev/null || printf '')" \
+  --argjson state "$(metrics_state_json)" \
+  '{head:$head, branch:$branch} + $state' 2>/dev/null || printf '{}')"
 
 SP='[[:space:]]'
 CTX=""

@@ -27,14 +27,18 @@ LIB="$(cd "$(dirname "$0")" 2>/dev/null && pwd)/lib"
 cd "$ROOT" 2>/dev/null || exit 0
 # Fail open: a missing library leaves the hook silent, never broken.
 . "$LIB/ledger.sh" 2>/dev/null || exit 0
+. "$LIB/metrics.sh" 2>/dev/null || exit 0
 
 command -v jq >/dev/null 2>&1 || exit 0
 
 INPUT=$(cat)
 CMD=$(printf '%s' "$INPUT" | jq -r '.tool_input.command // ""')
 [ -z "$CMD" ] && exit 0
+metrics_init "$(printf '%s' "$INPUT" | jq -r '.session_id // "nosession"')"
 
 deny() {
+  # A block is a fact worth keeping: it is the gate doing its job.
+  metrics_event gate_block "$(jq -cn --arg k "$2" '{kind:$k}' 2>/dev/null || printf '{}')"
   jq -n --arg r "$1" '{
     hookSpecificOutput: {
       hookEventName: "PreToolUse",
@@ -155,8 +159,8 @@ IS_COMMIT=0
 while IFS= read -r seg; do
   [ -z "${seg// /}" ] && continue
   case "$(classify "$seg")" in
-    DENY_ADD) deny "$DENY_ADD" ;;
-    DENY_COMMIT) deny "$DENY_COMMIT" ;;
+    DENY_ADD) deny "$DENY_ADD" blind_add ;;
+    DENY_COMMIT) deny "$DENY_COMMIT" blind_commit ;;
     COMMIT) IS_COMMIT=1 ;;
   esac
 done <<EOF
@@ -167,6 +171,19 @@ EOF
 [ "$IS_COMMIT" -eq 1 ] || exit 0
 
 OPEN=$(ledger_total_open)
+
+# LOG FIRST, DECIDE SECOND. The `no open items` path below exits, so a logging
+# call appended at the bottom would only ever record commits made with an open
+# ledger — exactly half the data, and the wrong half.
+#
+# This is an ATTEMPT, not a commit: the gate can still deny it, the user can
+# decline it, and the command can fail. 70-commit-landed.sh records what
+# actually landed. The gap between the two is worth reading.
+metrics_event commit_attempt "$(jq -cn \
+  --arg type "$(metrics_commit_type "$(printf '%s' "$CMD" | sed -n 's/.*-m[[:space:]]*.\{0,1\}\([a-z]\{2,10\}[(:].*\)/\1/p' | head -1)")" \
+  --argjson stat "$(metrics_numstat_json diff --cached --numstat)" \
+  --argjson open "${OPEN:-0}" \
+  '{commit_type:$type, ledger_open:$open} + $stat' 2>/dev/null || printf '{}')"
 
 [ "$OPEN" -eq 0 ] && exit 0
 
