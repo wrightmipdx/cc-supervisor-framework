@@ -33,7 +33,7 @@ task you cannot brief yet is too vague — split it or sharpen it.
 
 - **Tier:** scout | cartographer | builder | designer | architect
 - **Status:** open | dispatched | verified
-- **Review:** direct | reviewer | critic   <!-- see the review skill -->
+- **Review:** direct | reviewer | critic   <!-- REQUIRED; a task without one is not dispatchable -->
 - **Ledger items:** <which checkboxes this closes>
 
 ```text

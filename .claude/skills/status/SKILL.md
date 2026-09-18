@@ -28,6 +28,7 @@ that is not `*-archive.md`, which is the set the hooks count — plus the newest
 - next open item: …
 ## Active plan
 - NNN-slug · status · task X of Y
+- tasks with no Review: lane — N (a task without one is not dispatchable)
 ## Tree
 - clean | N files uncommitted (list them)
 ## Scratch

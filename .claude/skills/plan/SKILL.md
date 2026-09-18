@@ -48,6 +48,10 @@ you are just enforcing it yourself.
   `critic` — see `review`), and carries a pre-drafted brief. Choosing the review
   lane at plan time, when you can see the risk, stops it being chosen by reflex
   at close time, when opus looks like the safe default.
+- **A task with no `Review:` lane is not dispatchable.** Not a convention — a
+  gate. Across three real plans the field appeared zero times and every critic
+  dispatch was decided at close time, which is how a routine diff ends up on
+  opus. `status` reports any active-plan task that is missing one.
 - A task you cannot brief yet is too vague. Split it or sharpen it until you
   can.
 
