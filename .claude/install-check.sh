@@ -126,7 +126,9 @@ if [ -f docs/INTENT.md ]; then
 else
   warn "docs/INTENT.md missing — CLAUDE.md points at it for product context"
 fi
-if git check-ignore -q scratch/x 2>/dev/null; then ok "scratch/ is gitignored"
+if ! git rev-parse --git-dir >/dev/null 2>&1; then
+  warn "not a git repo — cannot verify scratch/ is ignored, and the commit gate and review skills assume one"
+elif git check-ignore -q scratch/x 2>/dev/null; then ok "scratch/ is gitignored"
 else bad "scratch/ is NOT gitignored, but CLAUDE.md says it is"; fi
 
 echo

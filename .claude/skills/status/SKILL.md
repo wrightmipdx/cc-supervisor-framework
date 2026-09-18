@@ -15,8 +15,9 @@ echo "--- last 5 commits ---"; git log --oneline -5 2>/dev/null
 echo "--- scratch ---"; ls -1 scratch 2>/dev/null | head -10
 ```
 
-Then read `docs/LEDGER.md`, the newest 10 lines of
-`docs/LESSONS.md`, and any plan with `status: active`.
+Then read every live ledger — `docs/LEDGER.md` and any `docs/LEDGER-*.md`
+that is not `*-archive.md`, which is the set the hooks count — plus the newest
+10 lines of `docs/LESSONS.md`, and any plan with `status: active`.
 
 ## Report
 

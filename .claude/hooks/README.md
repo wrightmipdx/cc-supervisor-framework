@@ -30,9 +30,9 @@ suite. Run it after an upgrade.
   staging target blind. An explicit path (`git add .gitignore`), a commit
   message quoting the phrase, or a grep for it all pass. Everything else injects
   context.
-- `.claude/hooks/test-commit-gate.sh` covers that behavior — 22 cases, blind
-  staging and the false positives that an earlier substring-matching version
-  denied. Run it after touching the gate.
+- `.claude/hooks/test-commit-gate.sh` covers that behavior — 26 cases: blind
+  staging, the commands a heredoc must not hide, and the false positives that an
+  earlier substring-matching version denied. Run it after touching the gate.
 - The pre-delegate and stop hooks fire once per session, tracked by a flag file
   in `$TMPDIR` keyed on the session ID.
 - There is deliberately no edit-budget hook. An earlier version counted

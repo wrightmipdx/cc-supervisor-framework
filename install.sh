@@ -165,7 +165,6 @@ git -C "$TARGET" rev-parse --git-dir >/dev/null 2>&1 \
 
 # --- plan ---------------------------------------------------------------------
 PLAN="$(mktemp)"   # lines: <action> <path>
-ADOPTED="$(mktemp)"
 
 for p in $(framework_paths); do
   src="$KIT/$p"; dst="$TARGET/$p"
@@ -179,8 +178,7 @@ for p in $(framework_paths); do
     echo "conflict $p" >> "$PLAN"; continue
   fi
   if [ "$MODE" = upgrade-adopt ]; then
-    echo "$(sha "$dst")  $p" >> "$ADOPTED"     # declared unmodified
-    echo "update $p" >> "$PLAN"; continue
+    echo "update $p" >> "$PLAN"; continue   # declared unmodified
   fi
   want="$(manifest_hash "$p")"
   have="$(sha "$dst")"
@@ -303,7 +301,6 @@ else
   want="$(manifest_hash "$SET_REL")"; have="$(sha "$SET")"
   if [ "$MODE" = upgrade-adopt ] || [ "$FORCE" -eq 1 ] || { [ -n "$want" ] && [ "$want" = "$have" ]; }; then
     SET_ACTION=update; cp "$LAYER" "$MERGED"
-    [ "$MODE" = upgrade-adopt ] && echo "$have  $SET_REL" >> "$ADOPTED"
   else
     SET_ACTION=conflict
     jq -s '.[0] as $y | .[1] as $o | ($y * $o)
@@ -320,6 +317,7 @@ case "$SET_ACTION" in
             [ "$DRY" -eq 0 ] && { cp "$MERGED" "$SET.new"; NEWFILES+=("$SET_REL.new"); } ;;
   keep)     echo "settings"; echo "  keep      $SET_REL already current" ;;
 esac
+LAYER_SHA="$(sha "$LAYER")"   # what this release would have written
 rm -f "$LAYER" "$MERGED"
 
 # --- docs, workspace ----------------------------------------------------------
@@ -394,16 +392,32 @@ if [ "$DRY" -eq 0 ]; then
     echo "stack $STACK"
     echo "installed $(date -u +%Y-%m-%dT%H:%M:%SZ)"
     for p in $(framework_paths); do
-      [ -f "$TARGET/$p" ] && echo "$(sha "$TARGET/$p")  $p"
+      [ -f "$TARGET/$p" ] || continue
+      # A conflicted file was NOT adopted: theirs is still on disk and this
+      # release's copy sits alongside as .new. Recording THEIR hash here would
+      # declare their edit canonical, and the next upgrade would see no drift
+      # and overwrite it silently -- the exact promise this manifest exists to
+      # keep. Record what this release ships instead, so the conflict keeps
+      # reporting until they adopt it.
+      if awk -v p="$p" '$1=="conflict" && $2==p {f=1} END{exit !f}' "$PLAN"; then
+        echo "$(sha "$KIT/$p")  $p"
+      else
+        echo "$(sha "$TARGET/$p")  $p"
+      fi
     done
-    [ -f "$SET" ] && echo "$(sha "$SET")  $SET_REL"
+    if [ -f "$SET" ]; then
+      # Same rule for settings.json, where the cost is the consumer's own
+      # permissions rather than a hook edit.
+      if [ "$SET_ACTION" = conflict ]; then echo "$LAYER_SHA  $SET_REL"
+      else echo "$(sha "$SET")  $SET_REL"; fi
+    fi
   } > "$MF"
 fi
 
 # --- report -------------------------------------------------------------------
 echo
 echo "----------------------------------------------------------------"
-[ "$DRY" -eq 1 ] && { echo "dry run: nothing written."; rm -f "$PLAN" "$ADOPTED"; exit 0; }
+[ "$DRY" -eq 1 ] && { echo "dry run: nothing written."; rm -f "$PLAN"; exit 0; }
 
 if [ "${#REMOVED[@]}" -gt 0 ]; then
   for p in "${REMOVED[@]}"; do
@@ -428,5 +442,5 @@ echo "  2. Fill in docs/INTENT.md if you have not. CLAUDE.md points there."
 echo "  3. Run the probe once, record it in docs/LESSONS.md:"
 echo "       .claude/install-check.sh --probe"
 echo
-rm -f "$PLAN" "$ADOPTED"
+rm -f "$PLAN"
 cd "$TARGET" && .claude/install-check.sh --static

@@ -54,6 +54,26 @@ run ALLOW 'rg "git commit -a" docs/'
 run ALLOW 'cat > notes.md <<EOF
 git add -A
 EOF'
+run ALLOW 'git commit -m "$(cat <<'"'"'EOF'"'"'
+fix: thing
+
+why-line mentioning git add -A
+EOF
+)"'
+
+echo
+echo "--- a heredoc must not hide the commands that FOLLOW it"
+run DENY  'cat > notes.md <<EOF
+body
+EOF
+git add -A'
+run DENY  'cat > notes.md <<-EOF
+	body
+	EOF
+git commit -am "wip"'
+run DENY  'git add -A <<EOF
+body
+EOF'
 
 echo
 printf '\n%d passed, %d failed\n' "$PASS" "$FAIL"

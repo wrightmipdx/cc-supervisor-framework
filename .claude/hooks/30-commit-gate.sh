@@ -45,8 +45,37 @@ DENY_ADD="SUPERVISOR: blind staging is blocked. Stage only this increment's file
 DENY_COMMIT="SUPERVISOR: that commit stages everything tracked. Stage this increment's files by path, then commit without it. See the commit skill."
 
 # --- normalize ---------------------------------------------------------------
-# Everything from the first heredoc operator on is document body, not commands.
-CMD="${CMD%%<<*}"
+# Drop heredoc BODIES, not the rest of the command. An earlier version cut
+# everything from the first heredoc operator onward, so anything that came after
+# a document -- `cat <<EOF > f` ... `EOF` then `git add -A` -- was never seen.
+#
+# Known limit: a literal '<<' inside a quoted string on a multi-line command is
+# read as an operator, and the lines until a matching delimiter are dropped.
+# Quoted spans cannot be stripped first, because a heredoc delimiter may itself
+# be quoted. Dropping lines only ever loses a deny, never invents one.
+strip_heredoc_bodies() {
+  awk '
+    BEGIN { q = sprintf("%c", 39)
+            re = "<<-?[ \t]*(\"[^\"]*\"|" q "[^" q "]*" q "|[A-Za-z_][A-Za-z0-9_]*)" }
+    skip {
+      t = $0; sub(/^[ \t]+/, "", t); sub(/[ \t]+$/, "", t)
+      if (t == delim) skip = 0
+      next
+    }
+    {
+      line = $0
+      if (match(line, re)) {
+        d = substr(line, RSTART, RLENGTH)
+        sub(/^<<-?[ \t]*/, "", d)
+        gsub("[\"" q "]", "", d)
+        delim = d; skip = 1
+        line = substr(line, 1, RSTART - 1) " " substr(line, RSTART + RLENGTH)
+      }
+      print line
+    }
+  '
+}
+CMD=$(printf '%s\n' "$CMD" | strip_heredoc_bodies)
 
 # Drop quoted spans so their contents can never match.
 SCRUBBED=$(printf '%s' "$CMD" | sed -e "s/'[^']*'/ /g" -e 's/"[^"]*"/ /g')

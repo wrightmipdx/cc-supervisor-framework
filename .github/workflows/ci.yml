@@ -161,6 +161,17 @@ jobs:
           grep -q 'Local rule' "$T/.claude/agents/scout.md" || { echo "overwrote a local edit"; exit 1; }
           grep -q 'Bash(make:\*)' "$T/.claude/settings.json" || { echo "destroyed customized settings.json"; exit 1; }
           test -f "$T/.claude/agents/scout.md.new" || { echo "no .new offered for the conflict"; exit 1; }
+
+          # Regression: the manifest once recorded the hash of the CONFLICTED
+          # file, declaring the consumer's edit canonical. The next upgrade then
+          # saw no drift and overwrote it silently -- no warning, no .new. An
+          # unresolved conflict must survive any number of upgrades.
+          ./install.sh "$T" --stack none >/dev/null
+          ./install.sh "$T" --stack none >/dev/null
+          grep -q 'Local rule' "$T/.claude/agents/scout.md" || { echo "a later upgrade clobbered the local edit"; exit 1; }
+          grep -q 'Bash(make:\*)' "$T/.claude/settings.json" || { echo "a later upgrade clobbered customized settings.json"; exit 1; }
+          test -f "$T/.claude/agents/scout.md.new" || { echo ".new stopped being offered"; exit 1; }
+
           ./install.sh "$T" --stack none --force >/dev/null
           grep -q 'Local rule' "$T/.claude/agents/scout.md" && { echo "--force did not overwrite"; exit 1; }
           echo "ok"
