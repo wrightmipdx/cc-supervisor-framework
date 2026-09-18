@@ -100,6 +100,50 @@ MSG
 fi
 [ "$MODE" = adopt ] && MODE=upgrade-adopt
 
+# A renamed fork is invisible to the CLAUDE.md migration below, which keys on a
+# literal '# SUPERVISOR'. Without this guard the fork's constitution survives and
+# the new block is appended under it: two live constitutions, contradictory
+# routing tables, and an install-check that passes.
+#
+# The heuristic is one heading, so know what it does not catch: a fork that also
+# renamed '## Where the detail lives' sails through and reproduces the original
+# bug. This raises the cost of the common case (a rename of the chair, which is
+# what the name in the banner is for); it is not a general fork detector.
+#
+# Only runs when a previous install is plausible. On a first-time install the
+# anchor is somebody else's heading, not a fork.
+CM_PRE="$TARGET/CLAUDE.md"
+if [ "$MODE" != install ] && [ "$FORCE" -eq 0 ] && [ -f "$CM_PRE" ] \
+   && ! grep -qF "$BEGIN_MARK" "$CM_PRE" \
+   && grep -q '^## Where the detail lives$' "$CM_PRE" \
+   && ! grep -q '^# SUPERVISOR$' "$CM_PRE"; then
+  FORK_NAME="$(grep -m1 '^# ' "$CM_PRE" | sed 's/^# //')"
+  # Echo back the flags actually used, so the suggestion cannot change the mode.
+  RERUN="./install.sh \"$TARGET\""
+  [ "$ADOPT" -eq 1 ] && RERUN="$RERUN --adopt"
+  cat >&2 <<MSG
+CLAUDE.md holds a constitution this installer does not recognize:
+
+  $FORK_NAME
+
+It has the framework's structure ('## Where the detail lives') but not its
+'# SUPERVISOR' heading, so this looks like a renamed fork. The migration keys on
+that heading and would not replace this block -- it would append the new one
+below it, leaving two live constitutions with contradictory routing tables.
+Nothing has been written.
+
+Its agents and skills are probably renamed too. Those live in shared
+directories, so they are never removed as framework files; you get a second,
+parallel copy under the canonical names and must reconcile by hand.
+
+Either reconcile first, or re-run with --force to append anyway and clean up
+after:
+
+  $RERUN --force --dry-run   # see the plan first
+MSG
+  exit 4
+fi
+
 # --- stack --------------------------------------------------------------------
 if [ -z "$STACK" ]; then
   STACK="$(manifest_field stack)"

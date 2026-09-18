@@ -62,6 +62,21 @@ upgrades land cleanly. **Commit first.** If you had customized a framework file,
 follows the old constitution in `CLAUDE.md`, the installer will not guess where
 it ends — it says so and leaves the file alone.
 
+### If you renamed the framework
+
+A fork that renamed the chair — `# FABLE — the chair` in place of
+`# SUPERVISOR` — is not recognized as this framework. The migration keys on that
+heading, so it would leave your constitution in place and append the new one
+below it: two live constitutions with contradictory routing tables, and an
+install-check that reports all green. The installer now refuses instead, before
+writing anything, and names the fork it found.
+
+Reconcile by hand first — your renamed agents and skills are still there too,
+and you will otherwise end up with a second parallel copy under the canonical
+names. `--force` proceeds anyway if you would rather clean up afterwards. The
+check is a single heading, so a fork that also renamed
+`## Where the detail lives` still slips through.
+
 ## What it actually buys you
 
 **Context isolation, mostly.** A worker reads twenty files and returns forty

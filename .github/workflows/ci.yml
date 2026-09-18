@@ -22,6 +22,9 @@ jobs:
       - name: Commit-gate behavior
         run: .claude/hooks/test-commit-gate.sh
 
+      - name: CLAUDE.md decision matrix and renamed-fork guard
+        run: ./test-install-claudemd.sh
+
       - name: Wiring — no dangling agent, skill or path references
         run: .claude/install-check.sh --static
 

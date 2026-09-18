@@ -159,6 +159,15 @@ cat <<PROBE
   builder's 'skills:' key names, or none.
   If (1) is yes, omitClaudeMd is not honored in this version — the guard banner
   at the top of CLAUDE.md is doing the work instead. Keep it.
+  If (3) is SHORTER than builder's 'tools:' line, the missing names are ones
+  this session cannot grant. Before concluding the 'tools:' key is at fault,
+  check whether the Supervisor has those tools either — if it does not, the
+  tools are absent from the whole session and the agent definitions are fine.
+  Seen this way: Glob and Grep absent everywhere, Read/Edit/Write/Bash arriving
+  normally. Do not strip the missing names from the definitions; another
+  session will have them. Just make sure briefs say to search with Bash
+  'grep'/'find' rather than naming the Grep tool, and note it in
+  docs/LESSONS.md. Re-probe after a Claude Code upgrade.
 PROBE
 
 echo
