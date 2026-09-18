@@ -74,6 +74,12 @@ suite. Run it after an upgrade.
 - The pre-delegate hook warns once per session, tracked by a flag file in
   `$TMPDIR` keyed on the session ID. It still logs every dispatch: logging
   happens before the early exits, not after them.
+- The stop hook rate-limits rather than firing once. `Stop` runs at the end of
+  every assistant turn, so a once-per-session flag delivered the nudge at the
+  end of turn one and then went quiet for the close it was written for. It
+  re-arms after `RETRO_NUDGE_SECONDS` (default 1800), and raises the wording
+  from a reminder to a warning on the real signature of the failure: commits
+  landed this session with the ledger not moved.
 - There is deliberately no edit-budget hook. An earlier version counted
   Edit/Write calls to catch the Supervisor implementing solo, but hooks fire
   inside subagents too, so one builder tripped it unaided. A hook that fires on
@@ -85,6 +91,7 @@ suite. Run it after an upgrade.
 
 - Docs location: `DOCS` in the `env` block of `settings.json`.
 - Event log location: `METRICS_DIR`, default `.metrics`.
+- Retro nudge interval: `RETRO_NUDGE_SECONDS`, default 1800.
 - Turn one off: delete its block from the `hooks` key in `settings.json`.
 - Turn all off for one session: set `"disableAllHooks": true`.
 
