@@ -14,6 +14,7 @@ LIB="$(cd "$(dirname "$0")" 2>/dev/null && pwd)/lib"
 cd "$ROOT" 2>/dev/null || exit 0
 # Fail open: a missing library leaves the hook silent, never broken.
 . "$LIB/ledger.sh" 2>/dev/null || exit 0
+. "$LIB/lessons.sh" 2>/dev/null || exit 0
 
 command -v jq >/dev/null 2>&1 || exit 0
 
@@ -22,8 +23,9 @@ CTX=""
 
 # --- lessons -----------------------------------------------------------------
 if [ -f "$DOCS/LESSONS.md" ]; then
-  # Only bullet lines count as lessons. Header prose is instructions, not data.
-  LESSONS=$(grep "^-${SP}" "$DOCS/LESSONS.md" | grep -v '(seed) none yet' | head -12 || true)
+  # A lesson is one bullet at column 0, however many lines it wraps across.
+  # lessons_render reassembles it and reports anything the cap left out.
+  LESSONS=$(lessons_render "$DOCS/LESSONS.md" 12 4000)
   if [ -n "$LESSONS" ]; then
     CTX="${CTX}## Lessons from prior sessions
 ${LESSONS}

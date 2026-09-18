@@ -16,7 +16,10 @@ Close the session like an engineer.
 
 ## 2. Lessons → `docs/LESSONS.md`
 
-Newest first, one line each, maximum 5 per session:
+Newest first, maximum 5 per session. **One lesson is one bullet**, starting at
+column 0. It may wrap — indent the continuation lines and the SessionStart hook
+reassembles it whole. What it must not be is two bullets, because a lesson split
+in half reaches the next session as two half-thoughts.
 
 - surprises — "X depends on Y; touch Y and X breaks"
 - process failures — "the brief omitted the migration step; builder blocked"
@@ -38,7 +41,9 @@ every future session.
 - Empty `scratch/`.
 - Archive the ledger when the topic closes: rename to
   `LEDGER-<topic>-archive.md`.
-- `LESSONS.md` over roughly 40 lines: prune it now.
+- `LESSONS.md` over roughly 12 lessons: prune it now. The hook carries 12 and
+  says how many it left behind; a file that always reports overflow has stopped
+  being read.
 
 ## 5. Cost check
 
