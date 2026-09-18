@@ -1,0 +1,117 @@
+# Supervisor
+
+A Claude Code orchestration framework. The strongest model holds the judgment;
+everything mechanical runs one or two tiers down, in its own context.
+
+Install it into a project repo:
+
+```bash
+git clone <this-repo> ~/src/supervisor
+~/src/supervisor/install.sh /path/to/your/repo
+```
+
+Re-run it to upgrade. Nothing you have written is ever overwritten.
+
+## What it actually buys you
+
+**Context isolation, mostly.** A worker reads twenty files and returns forty
+lines. The Supervisor's context grows by forty lines instead of twenty files —
+and that context is re-billed on every subsequent turn. Compounding avoided
+growth in the most expensive context is where the saving lives. Model tiering
+is the smaller, second effect.
+
+Be honest about the baseline. Against an all-opus single-agent session this is
+roughly a 3x cost cut. Against *sonnet-as-main-agent with subagents* — what
+most people actually run — the cost saving is small and can be negative. What
+it buys against that baseline is **quality**: judgment held on the strongest
+model, fresh eyes on every close, and requirements that survive compaction.
+That is the claim worth defending.
+
+`docs/ROUTING.md` has the arithmetic, the provenance of each practice, and the
+failure modes.
+
+## The tiers
+
+| Agent | Model | For |
+|---|---|---|
+| `scout` | haiku | Locate, list, bulk grep. Batched |
+| `scribe` | haiku | Bulk prose — changelogs, doc sweeps |
+| `cartographer` | sonnet | Explain a subsystem. Depth, not lookup |
+| `builder` | sonnet | Briefed implementation. The default |
+| `designer` | sonnet | UI against an approved mockup |
+| `reviewer` | sonnet | Fresh-eyes review. The default review lane |
+| `architect` | opus | The hard 10% and the escalation lane |
+| `critic` | opus | Review of security, money, data loss, public API, concurrency |
+
+The two opus lanes are the bill. Everything else is comparatively free, which
+is why the framework governs combined opus share rather than the Supervisor's
+share — at a 14/71/15 token split, that 14% is about half the cost.
+
+## The rules that carry the weight
+
+1. **Volume decides whether to delegate. Difficulty decides the tier.** A
+   five-line fix in code you have already read is cheaper, faster and more
+   accurate on your own desk than in a brief.
+2. **No delegation without a brief.** Workers have blank contexts.
+3. **No multi-task work without a ledger on disk.** Files survive compaction.
+   Conversations do not.
+4. **Evidence, never asserted success.** A report without pasted output is
+   rejected and re-run.
+5. **Small increments.** One brief, one reviewable, revertable commit.
+
+## Skills
+
+Loaded on demand, so the always-on context stays small.
+
+`intake` · `plan` · `dispatch` · `ui` · `review` · `debug` · `commit` ·
+`retro` · `status`
+
+## Hooks
+
+Instructions are advice; hooks are mechanism. Four of them, and only one
+blocks. See `.claude/hooks/README.md`.
+
+| Hook | Fences |
+|---|---|
+| `10-session-start` | Context loss across sessions and compactions |
+| `20-pre-delegate` | Delegating multi-task work without a ledger |
+| `30-commit-gate` | Blind staging; closing with open requirements |
+| `50-stop-retro` | Ending a session without a retro |
+
+## After installing
+
+```bash
+.claude/install-check.sh          # wiring + the one-time probe
+```
+
+Then three things:
+
+1. **Fill in `docs/INTENT.md`.** `CLAUDE.md` points there for product context
+   and it ships as a template.
+2. **Check `permissions.allow` in `.claude/settings.json`.** The installer
+   merges a stack fragment, but only you know your repo's real check commands.
+   Wrong entries mean permission prompts in every session.
+3. **Run the probe once and record the answer in `docs/LESSONS.md`.** Some
+   subagent frontmatter keys are honored in some versions and ignored —
+   silently — in others. `omitClaudeMd` is the one that bites: unhonored, every
+   worker reads the Supervisor constitution and starts trying to delegate the
+   work it was hired to do. `CLAUDE.md` opens with a banner that covers this
+   either way, but you want to know.
+
+## When not to use it
+
+`docs/ROUTING.md` says this at more length, and it is worth reading before you
+adopt it:
+
+- **Short sessions.** The overhead exceeds the saving.
+- **Uniformly hard work.** Research-heavy debugging is all judgment. There is
+  nothing to route down.
+- **Subscription billing** where you would rather spend top-tier quota freely.
+
+The file set still works in all three cases. The routing table just keeps you
+honest.
+
+## Requirements
+
+`jq` for the hooks and the installer. `git`. Node plus Playwright only if you
+use the UI fidelity gate's default capture path.

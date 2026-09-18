@@ -1,5 +1,5 @@
 {
-  "$comment": "Supervisor orchestrator. Swap the check commands under permissions.allow for your repo's real ones. See .claude/settings.examples/ for node, python, rust and go variants.",
+  "$comment": "Supervisor orchestrator, stack-neutral base. install.sh merges one of .claude/settings.examples/ into permissions.allow for your stack; add the rest of your repo's real check commands there.",
   "model": "fable",
   "permissions": {
     "defaultMode": "default",
@@ -12,9 +12,6 @@
       "Bash(git grep:*)",
       "Bash(ls:*)",
       "Bash(rg:*)",
-      "Bash(npm test:*)",
-      "Bash(npm run lint:*)",
-      "Bash(npm run typecheck:*)",
       "Read(//**)"
     ],
     "deny": [

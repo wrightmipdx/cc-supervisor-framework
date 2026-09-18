@@ -1,0 +1,70 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Shell syntax
+        run: |
+          for f in install.sh .claude/install-check.sh .claude/hooks/*.sh; do
+            bash -n "$f" || exit 1
+          done
+
+      - name: Shellcheck
+        run: shellcheck -S warning install.sh .claude/install-check.sh .claude/hooks/*.sh
+
+      - name: Commit-gate behavior
+        run: .claude/hooks/test-commit-gate.sh
+
+      - name: Wiring — no dangling agent, skill or path references
+        run: .claude/install-check.sh --static
+
+  install:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        stack: [node, python, rust-go, none]
+    steps:
+      - uses: actions/checkout@v4
+
+      # The real test: a fresh install must produce a repo that passes its own
+      # wiring check. install.sh runs --static itself and exits non-zero on
+      # failure, so a dangling reference fails the build here.
+      - name: Install into a fresh repo
+        run: |
+          mkdir -p "$RUNNER_TEMP/fresh" && git -C "$RUNNER_TEMP/fresh" init -q
+          ./install.sh "$RUNNER_TEMP/fresh" --stack ${{ matrix.stack }}
+
+      # Re-running is the upgrade path. It must be idempotent: no .new files,
+      # and exactly one copy of the constitution.
+      - name: Re-install is idempotent
+        run: |
+          ./install.sh "$RUNNER_TEMP/fresh" --stack ${{ matrix.stack }} | tee "$RUNNER_TEMP/second.log"
+          if grep -q '\.new' "$RUNNER_TEMP/second.log"; then
+            echo "re-install produced .new files; it is not idempotent"; exit 1
+          fi
+          n=$(grep -c 'BEGIN SUPERVISOR FRAMEWORK' "$RUNNER_TEMP/fresh/CLAUDE.md")
+          [ "$n" -eq 1 ] || { echo "constitution appears $n times"; exit 1; }
+
+      # The collision case: a repo that already has its own CLAUDE.md and
+      # settings.json must keep both.
+      - name: Existing files survive
+        run: |
+          mkdir -p "$RUNNER_TEMP/occupied/.claude" && git -C "$RUNNER_TEMP/occupied" init -q
+          printf '# House rules\n\nNever touch the vendor directory.\n' > "$RUNNER_TEMP/occupied/CLAUDE.md"
+          printf '{"permissions":{"allow":["Bash(make:*)"]}}\n' > "$RUNNER_TEMP/occupied/.claude/settings.json"
+          ./install.sh "$RUNNER_TEMP/occupied" --stack ${{ matrix.stack }}
+          grep -q 'Never touch the vendor directory.' "$RUNNER_TEMP/occupied/CLAUDE.md" \
+            || { echo "clobbered the project's own CLAUDE.md"; exit 1; }
+          grep -q 'BEGIN SUPERVISOR FRAMEWORK' "$RUNNER_TEMP/occupied/CLAUDE.md" \
+            || { echo "did not append the framework block"; exit 1; }
+          grep -q 'Bash(make:\*)' "$RUNNER_TEMP/occupied/.claude/settings.json" \
+            || { echo "clobbered the project's own settings.json"; exit 1; }
+          test -f "$RUNNER_TEMP/occupied/.claude/settings.json.new" \
+            || { echo "no merged settings written for review"; exit 1; }

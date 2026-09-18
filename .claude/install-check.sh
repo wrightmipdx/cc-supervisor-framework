@@ -12,10 +12,20 @@
 set -uo pipefail
 cd "$(dirname "$0")/.." || exit 1
 
+MODE=all
+case "${1:-}" in
+  --static) MODE=static ;;   # CI: wiring only, no probe to print
+  --probe)  MODE=probe  ;;   # just reprint the probe brief
+  "")       ;;
+  *) echo "usage: install-check.sh [--static|--probe]" >&2; exit 2 ;;
+esac
+
 PASS=0; FAIL=0; WARN=0
 ok()   { PASS=$((PASS+1)); printf '  ok    %s\n' "$1"; }
 bad()  { FAIL=$((FAIL+1)); printf '  FAIL  %s\n' "$1"; }
 warn() { WARN=$((WARN+1)); printf '  warn  %s\n' "$1"; }
+
+if [ "$MODE" != probe ]; then
 
 echo "== dependencies"
 for dep in jq git; do
@@ -35,7 +45,8 @@ for h in $(jq -r '.hooks | .. | .command? // empty' .claude/settings.json 2>/dev
 done
 for f in .claude/hooks/*.sh; do
   case "$f" in *test-*) continue ;; esac
-  grep -q "$(basename "$f")" .claude/settings.json || warn "$f exists but is not wired into settings.json"
+  grep -q "$(basename "$f")" .claude/settings.json \
+    || warn "$f is not wired into settings.json — it will never fire. If you kept your own settings at install time, adopt .claude/settings.json.new"
 done
 if [ -x .claude/hooks/test-commit-gate.sh ]; then
   if .claude/hooks/test-commit-gate.sh >/dev/null 2>&1; then ok "commit-gate tests pass"
@@ -70,10 +81,24 @@ echo "== paths the skills assume"
 for p in docs/LEDGER.md docs/LESSONS.md docs/plans/000-template.md scratch; do
   [ -e "$p" ] && ok "$p" || bad "$p missing — a skill references it"
 done
+if [ -f docs/INTENT.md ]; then
+  grep -q "^One paragraph. What the thing does" docs/INTENT.md \
+    && warn "docs/INTENT.md is still the unfilled template — CLAUDE.md sends workers there for product context" \
+    || ok "docs/INTENT.md"
+else
+  warn "docs/INTENT.md missing — CLAUDE.md points at it for product context"
+fi
 if git check-ignore -q scratch/x 2>/dev/null; then ok "scratch/ is gitignored"
 else bad "scratch/ is NOT gitignored, but CLAUDE.md says it is"; fi
 
 echo
+fi   # end static section
+
+if [ "$MODE" = static ]; then
+  printf '\n%d passed, %d failed, %d warnings\n' "$PASS" "$FAIL" "$WARN"
+  [ "$FAIL" -eq 0 ]; exit
+fi
+
 echo "== PROBE — frontmatter keys this script cannot verify"
 KEYS=$(grep -ho '^\(effort\|maxTurns\|omitClaudeMd\|skills\):' .claude/agents/*.md | sort -u | tr -d ':' | tr '\n' ' ')
 cat <<PROBE
@@ -99,5 +124,6 @@ cat <<PROBE
 PROBE
 
 echo
+[ "$MODE" = probe ] && exit 0
 printf '%d passed, %d failed, %d warnings\n' "$PASS" "$FAIL" "$WARN"
 [ "$FAIL" -eq 0 ]
