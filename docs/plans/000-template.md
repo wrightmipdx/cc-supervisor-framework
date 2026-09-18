@@ -1,14 +1,18 @@
----
 status: draft        # draft | active | done | abandoned
-topic: <slug>
+date: <YYYY-MM-DD>
 ledger: docs/LEDGER.md
----
+target version: <x.y.z>   # if the plan ships a release
+
+<!-- `status:` must stay on its own line at column 0: the SessionStart hook
+     finds the active plan with grep '^status:[[:space:]]*active'. -->
 
 # <NNN> — <title>
 
 ## Goal
 
-One paragraph. The outcome, not the activity.
+One paragraph. The outcome, not the activity. Name the evidence the plan is
+built on — a measured session, a bug report, a user decision — so a later
+reader can check the premises instead of trusting them.
 
 ## Success criteria
 
@@ -18,40 +22,69 @@ commands, not intentions.
 - [ ] `<command>` passes, including `<the new test>`
 - [ ] <user-visible behavior an outsider could check>
 
-## Not doing
+## Approach
 
-The scope cuts, stated explicitly so a later session does not relitigate them.
+The two or three decisions that shape everything else, each with its reason.
+Then what you considered and rejected:
+
+Rejected: <alternative> — <why not>.
+
+## Out of scope
+
+Scope cuts, stated explicitly so a later session does not relitigate them.
+
+-
+
+## Decisions — closed by the user <date>
+
+Questions that blocked planning and how the user settled them. A decision
+recorded here does not get reopened by a worker mid-task.
+
+1.
+
+## Corrections applied before dispatch
+
+Verify the plan's premises against the code before dispatching anything, and
+record what did not hold. A worker sent to fix a defect that does not exist
+burns a full dispatch and returns confused.
 
 -
 
 ## Tasks
 
-Every task names a tier and carries a brief that could be dispatched as-is. A
-task you cannot brief yet is too vague — split it or sharpen it.
+Every task names a worker and a review lane and carries a brief that could be
+dispatched as-is. A task you cannot brief yet is too vague — split it or
+sharpen it.
 
 ### T1 — <title>
 
-- **Tier:** scout | cartographer | builder | designer | architect
-- **Status:** open | dispatched | verified
-- **Review:** direct | reviewer | critic   <!-- REQUIRED; a task without one is not dispatchable -->
-- **Ledger items:** <which checkboxes this closes>
+- Worker: scout | cartographer | builder | designer | architect | scribe
+- Review: direct | reviewer | critic   <!-- REQUIRED; without one it is not dispatchable -->
+- Depends on: —
+- Ledger items: <which checkboxes this closes>
 
-```text
-Goal:
-Context:
-Files:
-Constraints:
-Done when:
-Evidence:
-Scratch:      scratch/T1-<slug>.md
-```
+- Brief:
+  - Goal:
+  - Context:       <file:line pointers, prior art, the constraint that matters>
+  - Files:
+  - Constraints:
+  - Done when:
+  - Evidence:      <commands whose output proves it>
+  - Scratch:       `scratch/T1-<slug>.md`
 
-**Verdict:** <filled in at review — verdict, residual risk>
+- Outcome:         <filled in at review — verdict, residual risk, what changed>
 
 ### T2 — <title>
 
 ...
 
+## Risks
+
+Each risk carries a tripwire: the specific check that would catch it, and who
+runs it.
+
+- **<risk>.** Tripwire: <check>.
+
 ## Next steps
 
-Written as the next session's opening line. Updated at every retro.
+Written as the next session's opening line, and updated at every retro.

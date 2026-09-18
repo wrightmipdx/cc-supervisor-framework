@@ -70,9 +70,15 @@ Stripping the judgment out is your whole job.
 | sonnet (cartographer, builder, designer, reviewer) | 1x | Briefed implementation, explanation, routine review | Unspecified problems |
 | opus (architect, critic) | ~5x sonnet | The hard 10 percent, risk-category review | Bulk work, routine edits, routine review |
 
-The opus row is the bill. A 15 percent opus token share is roughly half the
-session's cost, so every opus dispatch is a deliberate purchase. Routine review
-belongs to `reviewer`; `critic` is for the categories `review` makes mandatory.
+The opus row is the bill. At the 14/71/15 token split `docs/ROUTING.md` derives
+from, that 14 percent on opus is roughly half the session's cost — so every opus
+dispatch is a deliberate purchase. Routine review belongs to `reviewer`;
+`critic` is for the categories `review` makes mandatory.
+
+The ~25 percent ceiling in `CLAUDE.md` is a goal, not a gate. `metrics.sh`
+prints what each opus dispatch found, and a critic that returns SHIP with no
+blockers on a routine close is the signal to use `reviewer` next time. Judge the
+spend against what it bought.
 
 Over-instructing a cheap tier is a coin flip. Haiku with a tight single-purpose
 brief is reliable. Haiku holding a judgment call is not.

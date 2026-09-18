@@ -19,8 +19,13 @@ win. Model tiering is the smaller, second effect.
 
 A published measurement of this routing style recorded 14 percent of tokens on
 the Supervisor (planning plus review), 71 percent on sonnet, and 15 percent on
-haiku. Tokens are not dollars. At roughly 5x sonnet for opus and roughly 0.25x
-for haiku:
+haiku. **These are borrowed numbers**, measured on someone else's sessions, and
+they are here only until this repo has its own: `.claude/scripts/metrics.sh`
+now counts dispatches by tier every session, and the split below gets replaced
+after two instrumented sessions. Treat it as an order of magnitude.
+
+Tokens are not dollars. At roughly 5x sonnet for opus and roughly 0.25x for
+haiku:
 
 | Tier | Token share | Cost share |
 |---|---|---|
@@ -101,6 +106,13 @@ The two opus lanes are the bill. Everything else is comparatively free.
 critic together. Usually it is review: `critic` dispatched on routine closes
 that `reviewer` would have handled. Second most likely: the Supervisor typing a
 long implementation instead of briefing it.
+
+This one is a goal, not a gate, and the distinction matters. Capping opus is
+only correct if the opus was not earning its cost, so `metrics.sh` prints the
+verdict and blocker count of every opus dispatch. A `critic` that returned SHIP
+with no blockers on a routine close is the evidence for using `reviewer` next
+time; one that returned BLOCK bought more than it cost. Judge the share against
+what it found, not against the percentage alone.
 
 **Over-delegation of small work.** The mirror failure, and the more common one
 in practice. A brief for a five-line fix costs more than the fix, adds a spawn's

@@ -110,7 +110,9 @@ failure modes.
 
 The two opus lanes are the bill. Everything else is comparatively free, which
 is why the framework governs combined opus share rather than the Supervisor's
-share — at a 14/71/15 token split, that 14% is about half the cost.
+share — at the 14/71/15 token split `docs/ROUTING.md` derives, that 14% is about
+half the cost. It is a goal to measure against, not a cap to enforce:
+`metrics.sh` reports what the opus spend bought.
 
 ## The rules that carry the weight
 
@@ -133,15 +135,32 @@ Loaded on demand, so the always-on context stays small.
 
 ## Hooks
 
-Instructions are advice; hooks are mechanism. Four of them, and only one
-blocks. See `.claude/hooks/README.md`.
+Instructions are advice; hooks are mechanism. Six of them, and only one blocks.
+See `.claude/hooks/README.md`.
 
 | Hook | Fences |
 |---|---|
 | `10-session-start` | Context loss across sessions and compactions |
 | `20-pre-delegate` | Delegating multi-task work without a ledger |
 | `30-commit-gate` | Blind staging; closing with open requirements |
-| `50-stop-retro` | Ending a session without a retro |
+| `50-stop-retro` | Shipping work without reconciling the ledger |
+| `60-dispatch-end` | Nothing — it measures what a dispatch returned |
+| `70-commit-landed` | Nothing — it measures what actually got committed |
+
+Their behavior is covered by 117 cases across five suites in
+`.claude/hooks/test-*.sh`, which `install-check.sh` runs for you.
+
+## Measurement
+
+The last two hooks write a session event log to `.metrics/`, gitignored:
+dispatches by tier, what each report contained, commits and their real sizes.
+`.claude/scripts/metrics.sh` turns it into the block `retro` and `status` print,
+including **what each opus dispatch actually found** — the number that says
+whether an expensive lane earned its cost.
+
+Token cost per tier is deliberately NOT implemented. `docs/METRICS.md` holds the
+three routes and what each needs verified first; guessing a split would be worse
+than having none.
 
 ## After installing
 
