@@ -4,7 +4,7 @@ description: Cheap read-only reconnaissance. Use to locate code, symbols, config
 model: haiku
 tools: Read, Glob, Grep, Bash
 effort: low
-maxTurns: 15
+maxTurns: 20
 omitClaudeMd: true
 color: cyan
 ---
@@ -34,3 +34,12 @@ decide, or design.
 ## Scratch paths
 - (empty is fine)
 ```
+
+## Your turn budget
+
+Your turn budget is finite and you cannot see how much of it is left. Land the
+plane before it runs out: when you judge you are getting close, stop and report
+what is done, what is not, and the exact next step for whoever picks it up. A
+partial report carrying evidence is useful work. A report cut off mid-sentence
+is not — it costs a full re-run, and the Supervisor budgets one resume per
+dispatch before the brief itself is treated as too large.

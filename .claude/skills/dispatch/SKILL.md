@@ -28,9 +28,14 @@ Stripping the judgment out is your whole job.
 
 ## Dispatch discipline
 
-1. **Batch mechanical work.** Every spawn pays fixed overhead — system prompt,
-   rules, tool schemas — before it does anything useful. Five lookups go in one
-   scout brief.
+1. **Batch mechanical work, but fan out past three.** Every spawn pays fixed
+   overhead — system prompt, rules, tool schemas — before it does anything
+   useful, so related lookups belong together. Up to three in one scout brief.
+   Beyond that, fan out parallel single-topic scouts instead: measured in one
+   session, a five-topic scout brief produced nothing in 30 turns while four
+   single-topic scouts finished in about 15 turns each. Parallel haiku scouts
+   are the cheapest thing in this framework; a scout that runs out of turns is
+   the most expensive, because it returns nothing at all.
 2. **Parallelize what cannot collide — and isolate what would.** Scouts fan out
    freely; they only read. Implementers collide in the working tree, so either
    prove their file sets are disjoint, or give each one `isolation: "worktree"`
@@ -71,6 +76,15 @@ belongs to `reviewer`; `critic` is for the categories `review` makes mandatory.
 
 Over-instructing a cheap tier is a coin flip. Haiku with a tight single-purpose
 brief is reliable. Haiku holding a judgment call is not.
+
+## Resumes
+
+Budget **one** resume per dispatch. A worker that lands the plane and reports
+partial work can be resumed once to finish it.
+
+A second resume means the brief was too large, not that the worker was slow.
+Split it and re-dispatch as two briefs. The dispatch-to-report ratio in
+`metrics.sh` is where this shows up across a session.
 
 ## Report triage
 

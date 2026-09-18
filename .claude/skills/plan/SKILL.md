@@ -21,8 +21,10 @@ you are just enforcing it yourself.
 
 ## 1. Explore — keep the Supervisor's context clean
 
-- ONE batched scout brief carrying every lookup: seams, conventions, prior art,
-  existing utilities. Five greps are one brief, not five scouts.
+- Scout briefs carry up to three related lookups each — seams, conventions,
+  prior art, existing utilities. Past three, fan out parallel single-topic
+  scouts rather than growing one brief; a scout that exhausts its turns returns
+  nothing. See `dispatch` rule 1.
 - One cartographer pass if the subsystem is unfamiliar.
 - You keep the summaries. Bulk goes to `scratch/`.
 

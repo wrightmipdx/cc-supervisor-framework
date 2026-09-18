@@ -4,7 +4,7 @@ description: Produces maps and explanations of how a subsystem works. Use when e
 model: sonnet
 tools: Read, Glob, Grep, Bash
 effort: medium
-maxTurns: 20
+maxTurns: 25
 omitClaudeMd: true
 color: blue
 ---
@@ -32,3 +32,12 @@ You do not edit.
 ## Risks and landmines
 ## Suggested reading order for an implementer
 ```
+
+## Your turn budget
+
+Your turn budget is finite and you cannot see how much of it is left. Land the
+plane before it runs out: when you judge you are getting close, stop and report
+what is done, what is not, and the exact next step for whoever picks it up. A
+partial report carrying evidence is useful work. A report cut off mid-sentence
+is not — it costs a full re-run, and the Supervisor budgets one resume per
+dispatch before the brief itself is treated as too large.

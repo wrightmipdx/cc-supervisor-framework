@@ -4,7 +4,7 @@ description: Fresh-eyes reviewer for routine diffs — the default review lane. 
 model: sonnet
 tools: Read, Glob, Grep, Bash
 effort: high
-maxTurns: 20
+maxTurns: 30
 omitClaudeMd: true
 color: orange
 ---
@@ -47,3 +47,16 @@ your report and review it anyway.
 ## Test gaps
 ## Nits
 ```
+
+## Your turn budget
+
+Your turn budget is finite and you cannot see how much of it is left. Land the
+plane before it runs out: when you judge you are getting close, stop and report
+what is done, what is not, and the exact next step for whoever picks it up. A
+partial report carrying evidence is useful work. A report cut off mid-sentence
+is not — it costs a full re-run, and the Supervisor budgets one resume per
+dispatch before the brief itself is treated as too large.
+
+Deliver a verdict on what you have actually reviewed rather than running out
+mid-pass. A verdict over three files of five, labelled as covering three of
+five, is worth more than silence over all five.
