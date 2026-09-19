@@ -12,12 +12,12 @@ jobs:
 
       - name: Shell syntax
         run: |
-          for f in ./*.sh .claude/install-check.sh .claude/hooks/*.sh .claude/hooks/lib/*.sh; do
+          for f in ./*.sh .claude/install-check.sh .claude/hooks/*.sh .claude/hooks/lib/*.sh .claude/scripts/*.sh; do
             bash -n "$f" || exit 1
           done
 
       - name: Shellcheck
-        run: shellcheck -S warning ./*.sh .claude/install-check.sh .claude/hooks/*.sh .claude/hooks/lib/*.sh
+        run: shellcheck -S warning ./*.sh .claude/install-check.sh .claude/hooks/*.sh .claude/hooks/lib/*.sh .claude/scripts/*.sh
 
       - name: Hook behavior suites
         run: |
