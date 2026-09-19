@@ -59,4 +59,30 @@ the briefs are too large, which is a `plan` problem rather than a `commit` one.
 
 - Never commit a worker's tree you have not read.
 - Never commit with a failing check "to be fixed next commit".
+
+## The handoff
+
+At the close of a round — not at every commit — the message the user actually
+reads is governed the same way `retro/SKILL.md` §5 already governs the cost
+blocks: the script's own output first, verbatim, before a word of prose about
+it.
+
+```!
+.claude/scripts/trace.sh
+.claude/scripts/metrics.sh
+```
+
+Paste both blocks in full before writing anything. Never retype one of their
+figures into the paragraph that follows. This round exists because a real
+handoff said *"10 commits after the framework one"* while its own script said
+`landed: 9`, and the sponsor had no way to tell which was wrong — narration and
+a script diverge exactly when it matters and never announce which one to
+trust. Measured directly for cost figures, a chair that narrates a report
+instead of showing it loses about three points of accuracy and the sponsor's
+whole ability to check the rest (`retro/SKILL.md:73-80`).
+
+If `trace.sh` reports anything beyond a clean bill, say in the handoff what is
+being done about each finding — closed now, deferred with the user's recorded
+approval, or named as a known gap. A finding pasted and then left unaddressed
+is worse than not running the check at all.
 - Never bundle two briefs into one commit.

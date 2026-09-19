@@ -13,6 +13,7 @@ Report the state in one screen. No action. No code.
 echo "--- tree ---"; git status --short 2>/dev/null | head -20
 echo "--- last 5 commits ---"; git log --oneline -5 2>/dev/null
 echo "--- scratch ---"; ls -1 scratch 2>/dev/null | head -10
+echo "--- trace ---"; .claude/scripts/trace.sh 2>&1
 echo "--- session ---"; .claude/scripts/metrics.sh 2>&1 | head -60
 ```
 
@@ -29,6 +30,8 @@ that is not `*-archive.md`, which is the set the hooks count — plus the newest
 ## Active plan
 - NNN-slug · status · task X of Y
 - tasks with no Review: lane — N (a task without one is not dispatchable)
+- trace.sh findings: N (clean, or named — see commit/SKILL.md "The handoff"
+  for what governs these at session close)
 ## Tree
 - clean | N files uncommitted (list them)
 ## Scratch

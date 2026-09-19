@@ -42,7 +42,10 @@ every future session.
   the next session's opener.
 - Everything verified is committed. The tree is clean, or explicitly WIP with a
   note saying why.
-- One paragraph to the user: the goal, what shipped, what is open, the risks.
+- One paragraph to the user: the goal, what shipped, what is open, the risks —
+  under the contract in `commit/SKILL.md` **The handoff**: `trace.sh` and
+  `metrics.sh` output pasted verbatim before this paragraph, not retyped
+  into it.
 
 ## 4. Hygiene
 
