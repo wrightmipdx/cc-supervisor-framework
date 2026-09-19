@@ -247,6 +247,57 @@ eq "and no malformed event was written" 0 \
    "$(events | jq -r 'select(.event=="commit_landed" and .head == null)' | wc -l | tr -d ' ')"
 
 echo
+echo "--- 005: metrics.sh's direct-lane block, real hooks driving real commits"
+DLREPO="$TMP/dlane-repo"; mkdir -p "$DLREPO"; git -C "$DLREPO" init -q
+git -C "$DLREPO" config user.email t@t; git -C "$DLREPO" config user.name t
+SDL='{"session_id":"dlanesess"'
+DLB="$SDL,\"tool_input\":{\"command\":\"git status\"}}"
+
+printf 'base\n' > "$DLREPO/a.txt"; git -C "$DLREPO" add a.txt
+git -C "$DLREPO" commit -qm "chore: base"
+hook 70-commit-landed.sh "$DLB" "$DLREPO" >/dev/null   # baseline only, no event
+
+printf 'one\n' >> "$DLREPO/a.txt"; git -C "$DLREPO" add a.txt
+git -C "$DLREPO" commit -qm "fix: small"
+hook 70-commit-landed.sh "$DLB" "$DLREPO" >/dev/null   # direct-lane, within bound
+
+hook 20-pre-delegate.sh \
+  "$SDL,\"tool_input\":{\"subagent_type\":\"builder\",\"prompt\":\"T9\"}}" "$DLREPO" >/dev/null
+
+printf 'two\n' >> "$DLREPO/a.txt"; git -C "$DLREPO" add a.txt
+git -C "$DLREPO" commit -qm "fix: after dispatch"
+hook 70-commit-landed.sh "$DLB" "$DLREPO" >/dev/null   # NOT direct-lane
+
+for i in 1 2 3; do printf 'f%s\n' "$i" > "$DLREPO/f$i.txt"; git -C "$DLREPO" add "f$i.txt"; done
+seq 1 60 >> "$DLREPO/a.txt"; git -C "$DLREPO" add a.txt
+git -C "$DLREPO" commit -qm "fix: big direct edit"
+hook 70-commit-landed.sh "$DLB" "$DLREPO" >/dev/null   # direct-lane, OVER BOUND
+
+DLOUT=$(.claude/scripts/metrics.sh "$LOGDIR/session-dlanesess.jsonl")
+eq "direct-lane count excludes the post-dispatch commit" 2 \
+   "$(printf '%s' "$DLOUT" | grep -oE 'direct-lane commits.*: [0-9]+' | grep -oE '[0-9]+$')"
+eq "over-bound count flags only the big one" 1 \
+   "$(printf '%s' "$DLOUT" | grep -c 'OVER BOUND')"
+eq "the header states what the inference establishes, not who wrote it" 1 \
+   "$(printf '%s' "$DLOUT" | grep -c 'no worker preceded the commit, not who wrote it')"
+
+echo
+echo "--- 005: a session with no dispatches at all — every landed commit is direct-lane"
+NDREPO="$TMP/nodispatch-repo"; mkdir -p "$NDREPO"; git -C "$NDREPO" init -q
+git -C "$NDREPO" config user.email t@t; git -C "$NDREPO" config user.name t
+SND='{"session_id":"nodispsess"'
+NDB="$SND,\"tool_input\":{\"command\":\"git status\"}}"
+printf 'base\n' > "$NDREPO/a.txt"; git -C "$NDREPO" add a.txt
+git -C "$NDREPO" commit -qm "chore: base"
+hook 70-commit-landed.sh "$NDB" "$NDREPO" >/dev/null
+printf 'one\n' >> "$NDREPO/a.txt"; git -C "$NDREPO" add a.txt
+git -C "$NDREPO" commit -qm "fix: only commit"
+hook 70-commit-landed.sh "$NDB" "$NDREPO" >/dev/null
+NDOUT=$(.claude/scripts/metrics.sh "$LOGDIR/session-nodispsess.jsonl")
+eq "no dispatches logged: the lone commit is still counted direct-lane" 1 \
+   "$(printf '%s' "$NDOUT" | grep -oE 'direct-lane commits.*: [0-9]+' | grep -oE '[0-9]+$')"
+
+echo
 echo "--- mtime reads as a real epoch on this platform"
 # This is the case that was missing when the retro nudge's rate limiter passed
 # on macOS and failed on Linux: the BSD-first stat spelling does not fail on

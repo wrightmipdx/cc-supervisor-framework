@@ -192,15 +192,39 @@ if [ "$N_ATT" -gt 0 ] && [ "$N_LAND" -gt 0 ] && [ "$N_ATT" -gt "$N_LAND" ]; then
 fi
 [ "$N_BLOCK" -gt 0 ] && printf '   blind staging blocked by the gate: %s\n' "$N_BLOCK"
 
-# Direct lane: a commit with no dispatch since the previous one.
+# Direct lane: a commit with no dispatch since the previous one. This
+# establishes only that NO WORKER PRECEDED THE COMMIT — never who wrote the
+# code, and never which task it closed. Workers never commit (dispatch rule
+# 6), so every commit is chair-TYPED; what this distinguishes is whether a
+# worker authored the code that landed. 005/metrics.sh:195-205.
 if [ "$N_LAND" -gt 0 ]; then
-  printf '   direct-lane commits (no dispatch preceding them): %s\n' \
-    "$(printf '%s' "$EV" | jq '
-        [.[] | select(.event == "dispatch" or .event == "commit_landed")]
-        | reduce .[] as $e ({seen: false, n: 0};
-            if $e.event == "dispatch" then .seen = true
-            else {seen: false, n: (.n + (if .seen then 0 else 1 end))} end)
-        | .n')"
+  DIRECT_ROWS=$(printf '%s' "$EV" | jq -r '
+      [.[] | select(.event == "dispatch" or .event == "commit_landed")]
+      | reduce .[] as $e ({seen: false, out: []};
+          if $e.event == "dispatch" then {seen: true, out: .out}
+          elif .seen then {seen: false, out: .out}
+          else {seen: false, out: (.out + [$e])} end)
+      | .out[]
+      | [(.head[0:8]), .commit_type, (.files|tostring), (.insertions|tostring),
+         (if (.files > 2 or .insertions > 50) then "1" else "0" end)]
+      | @tsv')
+  DIRECT_N=0; OVER_N=0
+  if [ -n "$DIRECT_ROWS" ]; then
+    DIRECT_N=$(printf '%s\n' "$DIRECT_ROWS" | grep -c .)
+    OVER_N=$(printf '%s\n' "$DIRECT_ROWS" | awk -F'\t' '$5 == 1' | grep -c .)
+  fi
+  printf '   direct-lane commits (no dispatch preceding them): %s\n' "$DIRECT_N"
+  if [ "$DIRECT_N" -gt 0 ]; then
+    printf '   establishes only that no worker preceded the commit, not who wrote it —\n'
+    printf '   workers never commit, so every commit is chair-typed.\n'
+    printf '%s\n' "$DIRECT_ROWS" | while IFS="$(printf '\t')" read -r H T F I OVER; do
+      FLAG=""
+      [ "$OVER" = "1" ] && FLAG="  OVER BOUND (dispatch rule 7: <=2 files, <=~50 lines)"
+      printf '     %-8s  %-8s files=%s insertions=%s%s\n' "$H" "$T" "$F" "$I" "$FLAG"
+    done
+    printf '   past the direct lane'"'"'s own hands-on bound (advisory, never\n'
+    printf '   enforced): %s\n' "$OVER_N"
+  fi
 fi
 
 # --- ledger -----------------------------------------------------------------
