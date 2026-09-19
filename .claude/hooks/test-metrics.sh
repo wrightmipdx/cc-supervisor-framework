@@ -263,6 +263,57 @@ eq "and 0 for a file that is not there" 0 \
    "$(. "$KIT/.claude/hooks/lib/metrics.sh"; metrics_mtime "$TMP/no-such-file")"
 
 echo
+echo "--- the acceptance gate switch (ACCEPT_GATE)"
+# The gate is ON unless the value is exactly "off". A typo must not silently
+# remove a verification gate, so every near-miss spelling is tested for ON.
+#
+# The case that matters is the one that FORCES off and asserts the notice
+# appears. A test that only checks the hook stays quiet would pass against a
+# hook that had lost the feature entirely.
+GATEDIR="$TMP/gate"; mkdir -p "$GATEDIR"
+gate_ctx() {  # gate_ctx <value|__unset__> -> the injected context, or empty
+  ( if [ "$1" = "__unset__" ]; then unset ACCEPT_GATE; else export ACCEPT_GATE="$1"; fi
+    METRICS_DIR="$GATEDIR" CLAUDE_PROJECT_DIR="$PROJ" \
+      bash "$KIT/.claude/hooks/10-session-start.sh" </dev/null \
+      | jq -r '.hookSpecificOutput.additionalContext // ""' 2>/dev/null )
+}
+has_gate() { printf '%s' "$1" | grep -c 'Acceptance gate' | tr -d ' '; }
+
+eq "off announces the gate"            1 "$(has_gate "$(gate_ctx off)")"
+eq "unset is silent, and the gate is on" 0 "$(has_gate "$(gate_ctx __unset__)")"
+eq "on is silent"                      0 "$(has_gate "$(gate_ctx on)")"
+eq "OFF is a typo, not a switch"       0 "$(has_gate "$(gate_ctx OFF)")"
+eq "Off is a typo, not a switch"       0 "$(has_gate "$(gate_ctx Off)")"
+eq "0 is not a switch"                 0 "$(has_gate "$(gate_ctx 0)")"
+eq "empty is not a switch"             0 "$(has_gate "$(gate_ctx '')")"
+eq "false is not a switch"             0 "$(has_gate "$(gate_ctx false)")"
+
+# The rest of the injected context is unchanged by the switch: the notice is
+# added, nothing is displaced.
+ON_CTX=$(gate_ctx on); OFF_CTX=$(gate_ctx off)
+eq "lessons still reach the session with the gate off" 1 \
+   "$(printf '%s' "$OFF_CTX" | grep -c 'Lessons from prior sessions' | tr -d ' ')"
+eq "the open ledger still reaches it too" 1 \
+   "$(printf '%s' "$OFF_CTX" | grep -c 'Open ledger' | tr -d ' ')"
+eq "the gate notice displaces nothing" 0 \
+   "$(diff <(printf '%s\n' "$ON_CTX") <(printf '%s\n' "$OFF_CTX") | grep -c '^<' | tr -d ' ')"
+eq "and adds only itself" 0 \
+   "$(diff <(printf '%s\n' "$ON_CTX") <(printf '%s\n' "$OFF_CTX") | grep '^>' \
+      | grep -cv 'Acceptance gate\|ACCEPT_GATE\|^> $' | tr -d ' ')"
+
+# Fail open, and in the safe direction: without jq the hook is silent, so the
+# OFF notice never reaches the session and the gate reads ON. Ceremony runs
+# when it should not, rather than a gate quietly disappearing.
+NOJQ="$TMP/nojq"; mkdir -p "$NOJQ"
+for c in bash sed grep git find date cat wc tr head sort awk chmod mktemp rm printf; do
+  CP=$(command -v "$c" 2>/dev/null) && ln -sf "$CP" "$NOJQ/$c"
+done
+OUT=$(PATH="$NOJQ" ACCEPT_GATE=off METRICS_DIR="$GATEDIR" CLAUDE_PROJECT_DIR="$PROJ" \
+        bash "$KIT/.claude/hooks/10-session-start.sh" </dev/null 2>/dev/null); RC=$?
+eq "no jq: session-start still exits 0"        0 "$RC"
+eq "no jq: and emits nothing, so the gate is on" "" "$OUT"
+
+echo
 echo "--- the whole log is valid JSON, every line"
 eq "jq -s parses it" 0 "$(events | jq -s '.' >/dev/null 2>&1; printf %s $?)"
 eq "every event has a type"    0 "$(events | jq -r 'select(.event == null)' | wc -l | tr -d ' ')"

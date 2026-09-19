@@ -32,6 +32,13 @@ anything" installer cannot upgrade, because every changed file piles up as
 | `CLAUDE.md` | Only the marked framework block is replaced. Your own sections are untouched |
 | `settings.json`, `LEDGER`, `LESSONS`, `INTENT`, `.gitignore` | Yours. Seeded once, then never touched |
 
+Because `settings.json` is seeded once, a key a later release adds to it never
+reaches an existing install. Any switch the kit ships therefore has to behave
+correctly when its key is **absent** — `ACCEPT_GATE` does: absent means the
+acceptance gate is on. To turn it off, add `"ACCEPT_GATE": "off"` to the `env`
+block of your own `.claude/settings.json`; upgrades will neither add it nor
+take it away.
+
 The promise is *nothing you wrote is overwritten* — not *nothing is
 overwritten*. `--force` overwrites your edits too; `--dry-run` prints the plan
 and writes nothing.
@@ -92,6 +99,14 @@ it buys against that baseline is **quality**: judgment held on the strongest
 model, fresh eyes on every close, and requirements that survive compaction.
 That is the claim worth defending.
 
+**And a close the sponsor can check.** Whoever is briefing the work may not
+read diffs — increasingly they do not. `review` verifies the diff against the
+brief; `accept` demonstrates the built thing against acceptance criteria the
+sponsor wrote in their own language, as observed behavior rather than a green
+test log. Capture goes down-tier, adjudication stays in the chair. It is on by
+default and `ACCEPT_GATE=off` removes it, which is the right setting for an
+operator who reads their own diffs.
+
 `docs/ROUTING.md` has the arithmetic, the provenance of each practice, and the
 failure modes.
 
@@ -130,8 +145,8 @@ half the cost. It is a goal to measure against, not a cap to enforce:
 
 Loaded on demand, so the always-on context stays small.
 
-`intake` · `plan` · `dispatch` · `ui` · `review` · `debug` · `commit` ·
-`retro` · `status`
+`intake` · `plan` · `dispatch` · `ui` · `review` · `accept` · `debug` ·
+`commit` · `retro` · `status`
 
 ## Hooks
 
@@ -147,7 +162,7 @@ See `.claude/hooks/README.md`.
 | `60-dispatch-end` | Nothing — it measures what a dispatch returned |
 | `70-commit-landed` | Nothing — it measures what actually got committed |
 
-Their behavior is covered by 117 cases across five suites in
+Their behavior is covered by 147 cases across five suites in
 `.claude/hooks/test-*.sh`, which `install-check.sh` runs for you.
 
 ## Measurement

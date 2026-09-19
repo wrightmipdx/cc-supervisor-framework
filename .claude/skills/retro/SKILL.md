@@ -9,6 +9,10 @@ Close the session like an engineer.
 
 - Run the plan's success criteria directly. The criteria themselves, not "the
   tests passed".
+- Acceptance: every `AC-n` in the plan has a record from `accept` — a PASS, or
+  a named not-demonstrable-by-run with its substitute evidence. One with
+  neither is an open requirement however green the tests are. Skip when
+  `ACCEPT_GATE=off`.
 - Ledger: every item is `[x]` (verified) or `[~]` (deferred, with the user's
   approval noted). Anything still open gets an honest "remaining" note.
 - Plan status: `done` when the criteria hold. `abandoned` with a one-line why
@@ -24,6 +28,10 @@ in half reaches the next session as two half-thoughts.
 - surprises — "X depends on Y; touch Y and X breaks"
 - process failures — "the brief omitted the migration step; builder blocked"
 - corrected beliefs from intake
+- **spec defects** — an `AC-n` that failed after a passing review, or one the
+  sponsor could not confirm from the record. The code did what the brief said
+  and the brief was wrong, so the lesson is about the specification, not the
+  build. Follow `ui` §5: name which criterion was missing, ambiguous or silent
 
 Prune stale lines. Never hoard. A lesson that no longer applies costs tokens in
 every future session.
@@ -41,9 +49,15 @@ every future session.
 - Empty `scratch/`.
 - Archive the ledger when the topic closes: rename to
   `LEDGER-<topic>-archive.md`.
-- `LESSONS.md` over roughly 12 lessons: prune it now. The hook carries 12 and
-  says how many it left behind; a file that always reports overflow has stopped
-  being read.
+- `LESSONS.md` over roughly 12 lessons: prune it now. A file that always
+  reports overflow has stopped being read.
+- **The count is not the binding constraint — the size is.** `10-session-start`
+  carries at most 12 lessons *and* at most 4000 bytes, and the byte budget bites
+  first: twelve lessons of the length this file tends to produce is around 5.5k,
+  so four of them never reach the session while the count looks fine. Read the
+  hook's own "N older lesson(s) not shown" line rather than counting bullets. If
+  it is non-zero at 12 or fewer lessons, the fix is shorter lessons, not more of
+  them.
 
 ## 5. Session report — run it, do not estimate it
 
@@ -64,8 +78,16 @@ nothing fabricated, no judgment flipped, and no way for the user to check any of
 it. Prime rule 2 is enforced on these exact numbers, and a governance number
 that reaches the user only through a retyping has no audit trail.
 
-Then read the four blocks that carry a decision, and **say which way you land on
-each one**. A number nobody judged is a number nobody will act on.
+Then read the four blocks that carry a decision, and **say which way you land
+on each one**. A number nobody judged is a number nobody will act on.
+
+**End each block with a recommendation, not a finding.** One line, in the shape
+*"Recommend X next session, because Y"*, written so someone who does not price
+tokens can ratify or override it. Tiering, turn budgets and review lanes are
+your column, not the sponsor's — see `CLAUDE.md`, **The chair and the
+sponsor** — so handing over a table and asking them to judge it moves the
+decision to the seat least able to make it. Name the consequence of the
+override too: what gets slower, cheaper or riskier if they say no.
 
 **1. Opus share of cost.** `CLAUDE.md` prime rule 2 governs the combined opus
 share — Supervisor **plus** `architect` **plus** `critic`. The ~25% figure is a

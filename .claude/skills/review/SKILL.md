@@ -56,10 +56,23 @@ much it matters.
 
 ## 4. Reconcile
 
-- Mark the ledger item `[x]` only now. Verified, not asserted.
-- Record the lane used, the verdict, and any residual risk in the plan's task
-  entry. The lane is part of the audit trail — a later session needs to know a
-  close was reviewed on sonnet.
+- Mark the ledger item `[x]` only now — verified **and accepted**. Verified is
+  this skill: the diff does what the brief said. Accepted is `accept`: the
+  thing does what the sponsor asked, shown. A close that has only the first is
+  not done, unless `ACCEPT_GATE=off`.
+- Record the lane used, the verdict, the acceptance record's location, and any
+  residual risk in the plan's task entry. The lane is part of the audit trail:
+  a later session needs to know a close was reviewed on sonnet.
+
+## 5. Then accept
+
+`review` is the engineering check. `accept` is the sponsor's, and it runs next
+— demonstrate the `AC-n` items this close claims before you commit. Skipped on
+the direct lane and whenever `ACCEPT_GATE=off`.
+
+A criterion that fails **after** a passing review is a spec defect, not a build
+defect: the code did what the brief said and the brief was wrong. Do not send
+it round the fix loop as though the worker erred.
 
 ## For UI closes
 

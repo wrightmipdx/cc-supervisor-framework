@@ -59,6 +59,31 @@ Treat every number here as a target shape, not a promise. The published split
 came from a different codebase and task mix; calibrate yours over a few sessions
 and record it in `docs/LESSONS.md`.
 
+### The counterpart the routing table assumes
+
+Every rule above governs how the chair spends. None of them say who the chair
+is answerable to. The kit defines eight worker contracts in
+`.claude/agents/*.md` and, until 0.5.0, none for the human — who appears only
+as an approval oracle at four gates, each handing over an artifact that assumes
+an engineer is reading it.
+
+That is a live failure mode when the operator is not one. A sponsor who cannot
+read a diff cannot refuse a close, so every close is accepted, and "fresh eyes
+on every close" quietly reduces to the chair reviewing itself through a worker
+it briefed. Trust substitutes for verification because verification was never
+offered in a form the sponsor could use.
+
+`CLAUDE.md`'s **The chair and the sponsor** splits the decisions. The `accept`
+skill makes the sponsor's column checkable: acceptance criteria written in
+their language before the code exists, demonstrated afterwards as observed
+behavior. Its cost discipline is the same as everything else here — capture is
+volume and goes down-tier, adjudication is judgment and stays in the chair,
+which is `ui`'s fidelity gate generalized rather than a new idea.
+
+The gate is on by default and `ACCEPT_GATE=off` removes it, because an operator
+who reads their own diffs is already doing the adjudication and the staging is
+pure ceremony — the over-delegation failure above, wearing a different hat.
+
 ## Provenance of each practice
 
 | # | Practice | Source |
@@ -78,6 +103,7 @@ and record it in `docs/LESSONS.md`.
 | 13 | A bounded direct lane: briefing a five-line fix costs more than the fix | Correction to #1 after review; volume decides delegation, difficulty decides tier |
 | 14 | Verify the harness honors a frontmatter key before relying on it | `.claude/install-check.sh`; unsupported keys are ignored silently |
 | 15 | An installer needs a manifest to distinguish the consumer's edits from the last release's files | Built after the first installer proved unable to upgrade anything |
+| 16 | The sponsor's decisions are named, and made checkable by demonstration rather than by diff-reading | This framework, 0.5.0 — built when its own operator turned out not to be an SWE |
 
 ## Architecture
 

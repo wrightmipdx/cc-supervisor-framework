@@ -23,8 +23,10 @@
       "Read(./**/*.pem)"
     ]
   },
+  "$comment_env": "ACCEPT_GATE: set to \"off\" to skip the accept skill's demonstration gate — for an operator who reads their own diffs. Any other value, or the key's absence, leaves it on.",
   "env": {
-    "DOCS": "docs"
+    "DOCS": "docs",
+    "ACCEPT_GATE": "on"
   },
   "hooks": {
     "SessionStart": [

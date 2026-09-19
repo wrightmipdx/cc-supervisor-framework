@@ -147,9 +147,19 @@ for a in $(grep -o '\*\*[a-z]*\*\* (\(haiku\|sonnet\|opus\))' CLAUDE.md | sed 's
   [ -f ".claude/agents/$a.md" ] && ok "agent $a" || bad "CLAUDE.md routes to '$a' but .claude/agents/$a.md does not exist"
 done
 for s in $(sed -n '/Where the detail lives/,$p' CLAUDE.md | grep -o '`[a-z]*`' | tr -d '`' | sort -u); do
-  case "$s" in status|intake|plan|dispatch|ui|review|debug|commit|retro) ;; *) continue ;; esac
+  case "$s" in status|intake|plan|dispatch|ui|review|debug|commit|retro|accept) ;; *) continue ;; esac
   [ -f ".claude/skills/$s/SKILL.md" ] && ok "skill $s" || bad "CLAUDE.md points at skill '$s' which does not exist"
 done
+
+# The acceptance gate is a switch an operator can flip in their own
+# settings.json, and a disabled verification gate that says nothing is worse
+# than none at all. Report the resolved state so it is never a surprise.
+AG="$(jq -r '.env.ACCEPT_GATE // ""' .claude/settings.json 2>/dev/null || printf '')"
+if [ "$AG" = "off" ]; then
+  warn "acceptance gate OFF (ACCEPT_GATE in settings.json) — closes skip the accept skill"
+else
+  ok "acceptance gate on${AG:+ (ACCEPT_GATE=$AG)}"
+fi
 
 echo
 echo "== paths the skills assume"

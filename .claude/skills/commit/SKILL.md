@@ -6,12 +6,17 @@ allowed-tools: Read, Bash(git status:*), Bash(git diff:*), Bash(git add:*), Bash
 
 One verified increment, one commit. Small diffs review well and revert well.
 
-## Gate — all four
+## Gate — all five
 
 1. `git status` shows nothing in the tree you cannot explain.
 2. The done-when checks pass, and you saw them pass (`review`).
 3. The review pass is done in the lane `review` requires.
 4. The user is not holding commits mid-sequence.
+5. Every `AC-n` this increment claims has a PASS in the acceptance record, or
+   is named there as not demonstrable by run with its substitute evidence
+   (`accept`). **Unless `ACCEPT_GATE=off`** — then there are four gates, not a
+   fifth that is permanently waved through. A gate nobody can fail is worse
+   than no gate: it reads as an answer.
 
 If any gate fails, do not commit. Say which gate failed.
 

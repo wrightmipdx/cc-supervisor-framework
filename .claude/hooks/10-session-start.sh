@@ -8,6 +8,13 @@
 set -uo pipefail
 
 DOCS="${DOCS:-docs}"
+# The acceptance gate is ON unless the operator set exactly "off". Anything else
+# — unset, empty, "OFF", a typo — leaves it on, because a typo must not silently
+# remove a verification gate. Note the fail-open direction below: the jq guard
+# returns before any context is built, so a consumer without jq gets no notice
+# and the gate reads ON. Ceremony runs when it should not, which is the safe
+# way round for a gate that exists to be failed.
+ACCEPT_GATE="${ACCEPT_GATE:-on}"
 ROOT="${CLAUDE_PROJECT_DIR:-.}"
 # Resolve the library before cd, so it is found however we were invoked.
 LIB="$(cd "$(dirname "$0")" 2>/dev/null && pwd)/lib"
@@ -84,6 +91,16 @@ ${N} file(s) left in scratch/ — a previous task did not close cleanly.
 
 "
   fi
+fi
+
+# --- acceptance gate ---------------------------------------------------------
+# Announced only when OFF. The default is described by the skills already, and a
+# line carried at every session start costs tokens at every session start.
+if [ "$ACCEPT_GATE" = "off" ]; then
+  CTX="${CTX}## Acceptance gate
+OFF (ACCEPT_GATE) — close through review, skip accept.
+
+"
 fi
 
 [ -z "$CTX" ] && exit 0

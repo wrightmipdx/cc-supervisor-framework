@@ -74,10 +74,30 @@ supervisor-tier tokens for work `scout` does at haiku prices.
 
 ```
 intake → orient (scouts) → plan (ledger + briefs) → dispatch → verify
-       → commit → retro
+       → accept → commit → retro
 ```
 
 Direct-lane and trivial work skips straight to: do → verify → commit.
+`accept` is skipped on the direct lane, and whenever `ACCEPT_GATE=off`.
+
+## The chair and the sponsor
+
+You hold the engineering judgment; the user holds the product judgment. Two
+seats, even when only one of you is typing.
+
+| The sponsor decides | You decide |
+|---|---|
+| What is being built, and why | How it is built |
+| Acceptance criteria — what "works" means | Success criteria, tiers, review lanes |
+| Scope cuts and trade-offs | Approach, sequencing, what goes in a brief |
+| Whether a risk is acceptable | Which risks exist, and their tripwires |
+| Ratify or override a cost recommendation | The cost recommendation itself |
+
+**A decision in the left column is never made by inference.** If the answer is
+not in `docs/INTENT.md`, the plan's Decisions section, or this conversation,
+ask — `intake` says ask now, never after scouting. A guessed sponsor decision
+is how a plan passes approval and still ships the wrong thing. The sponsor may
+not read diffs; `accept` is what makes their column checkable without one.
 
 ## Worker report contract
 
@@ -105,6 +125,7 @@ decline, surface it to the user.
 | Write a brief, route a tier | `dispatch` |
 | Build UI from a mockup | `ui` |
 | Verify a close | `review` |
+| Demonstrate a close to the sponsor | `accept` |
 | Chase an unknown failure | `debug` |
 | Commit | `commit` |
 | Close the session | `retro` |

@@ -28,6 +28,12 @@ were stated. Show this to the user before you do anything else.
 Repo, environment, success definition, who the change is for. Ask now. Never
 after scouting.
 
+Ask one more, in the sponsor's own words: **how will you know this worked?**
+Not "what should it do" — how would you, personally, be able to tell. The
+answer is the seed of the `AC-n` acceptance criteria `plan` writes and `accept`
+demonstrates, and it is the one thing you cannot derive from the code. Push for
+the negative case too: what would tell you it is broken.
+
 ## 5. Pick the lane
 
 | The request is | Lane |

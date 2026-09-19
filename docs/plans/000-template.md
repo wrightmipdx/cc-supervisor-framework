@@ -14,6 +14,23 @@ One paragraph. The outcome, not the activity. Name the evidence the plan is
 built on — a measured session, a bug report, a user decision — so a later
 reader can check the premises instead of trusting them.
 
+## Acceptance criteria
+
+What the sponsor asked for, in observable behavior an outsider could check. No
+commands — those are the success criteria below, and the two are not the same
+thing. Acceptance criteria are what was asked for; success criteria are what
+proves the build is sound. Both are required, and a requirement with no
+acceptance criterion gets one or gets cut.
+
+The `accept` skill demonstrates these before commit. Give each an id: tasks
+cite them, and so does the acceptance record.
+
+- AC-1 <a user with X sees Y>
+- AC-2 <and a user without X does not> — the negative case, where one exists
+
+With `ACCEPT_GATE=off` this section is optional; the demonstration is what the
+switch removes, not the criteria.
+
 ## Success criteria
 
 Observable and runnable. The `retro` skill executes these literally, so write
@@ -50,11 +67,18 @@ burns a full dispatch and returns confused.
 
 -
 
+## Risks
+
+Each risk carries a tripwire: the specific check that would catch it, and who
+runs it.
+
+- **<risk>.** Tripwire: <check>.
+
 ## Tasks
 
-Every task names a worker and a review lane and carries a brief that could be
-dispatched as-is. A task you cannot brief yet is too vague — split it or
-sharpen it.
+Every task names a worker, a review lane and the acceptance criteria it
+demonstrates, and carries a brief that could be dispatched as-is. A task you
+cannot brief yet is too vague — split it or sharpen it.
 
 ### T1 — <title>
 
@@ -62,6 +86,7 @@ sharpen it.
 - Review: direct | reviewer | critic   <!-- REQUIRED; without one it is not dispatchable -->
 - Depends on: —
 - Ledger items: <which checkboxes this closes>
+- Acceptance: <which AC-n this demonstrates, or '—'>
 
 - Brief:
   - Goal:
@@ -72,18 +97,12 @@ sharpen it.
   - Evidence:      <commands whose output proves it>
   - Scratch:       `scratch/T1-<slug>.md`
 
-- Outcome:         <filled in at review — verdict, residual risk, what changed>
+- Outcome:         <filled in at review and accept — verdict, AC results,
+                   residual risk, what changed>
 
 ### T2 — <title>
 
 ...
-
-## Risks
-
-Each risk carries a tripwire: the specific check that would catch it, and who
-runs it.
-
-- **<risk>.** Tripwire: <check>.
 
 ## Next steps
 

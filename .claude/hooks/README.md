@@ -110,6 +110,12 @@ suite. Run it after an upgrade.
 ## Tuning
 
 - Docs location: `DOCS` in the `env` block of `settings.json`.
+- Acceptance gate: `ACCEPT_GATE` in the same `env` block. Exactly `off`
+  disables the `accept` skill's demonstration gate; anything else, including
+  the key being absent, leaves it on. `10-session-start.sh` announces the OFF
+  state and is silent when on. Absent must mean on: `settings.json` is seeded
+  once and never touched by an upgrade, so a key added to the kit today never
+  reaches a consumer who installed yesterday.
 - Event log location: `METRICS_DIR`, default `.metrics`.
 - Retro nudge interval: `RETRO_NUDGE_SECONDS`, default 1800.
 - Turn one off: delete its block from the `hooks` key in `settings.json`.

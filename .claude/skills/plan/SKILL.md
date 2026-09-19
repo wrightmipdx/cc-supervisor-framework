@@ -38,6 +38,12 @@ you are just enforcing it yourself.
 
 ## 3. Write it down
 
+- **Acceptance criteria first, before the ledger.** `AC-n` items in the
+  sponsor's language: observable behavior an outsider could check, no commands.
+  They are what `accept` demonstrates before commit, and a requirement with no
+  acceptance criterion gets one or gets cut — if nobody can say what "working"
+  looks like, nobody will be able to tell whether it does. Include the negative
+  case wherever one exists.
 - Requirements become checkboxes in `docs/LEDGER.md`. One ledger per
   topic. Archive by renaming to `LEDGER-<topic>-archive.md`.
 - The ledger holds explicit requirements, implicit requirements, and edge cases.
@@ -45,7 +51,8 @@ you are just enforcing it yourself.
 - Copy `docs/plans/000-template.md` to
   `docs/plans/NNN-slug.md`.
 - Every task names its worker tier, its review lane (`direct`, `reviewer`, or
-  `critic` — see `review`), and carries a pre-drafted brief. Choosing the review
+  `critic` — see `review`), the `AC-n` items it demonstrates, and carries a
+  pre-drafted brief. Choosing the review
   lane at plan time, when you can see the risk, stops it being chosen by reflex
   at close time, when opus looks like the safe default.
 - **A task with no `Review:` lane is not dispatchable.** Not a convention — a
@@ -57,9 +64,21 @@ you are just enforcing it yourself.
 
 ## 4. Confirm
 
-Show the user: goal, success criteria, tasks with their tiers and review lanes,
-and the scope cuts. `ExitPlanMode` carries this to them for approval. Get a go
-before any dispatch. Flip `status` to `active` on approval.
+Show the sponsor their own surface, in this order and contiguously:
+
+1. the goal
+2. the acceptance criteria
+3. the scope cuts — what you are deliberately not doing
+4. the risks, each with its tripwire
+5. any decision you need from them before dispatch
+
+Then the engineering, as detail below it: tasks, tiers, review lanes. That
+order is the point. Leading with tiers and lanes asks the sponsor to approve
+decisions in your column, and what comes back is a rubber stamp rather than a
+review — see `CLAUDE.md`, **The chair and the sponsor**.
+
+`ExitPlanMode` carries this to them for approval. Get a go before any dispatch.
+Flip `status` to `active` on approval.
 
 ## Anti-patterns
 
