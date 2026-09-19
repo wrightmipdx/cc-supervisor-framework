@@ -62,6 +62,15 @@ if [ -x .claude/scripts/session-tokens.sh ]; then
 else
   warn ".claude/scripts/session-tokens.sh is missing — metrics.sh will report token cost as unavailable"
 fi
+if [ -x .claude/scripts/trace.sh ]; then
+  if .claude/scripts/trace.sh --self-test >/dev/null 2>&1; then
+    ok "trace self-test passes"
+  else
+    bad "trace FAILS — run .claude/scripts/trace.sh --self-test"
+  fi
+else
+  warn ".claude/scripts/trace.sh is missing — no requirement-trail report available"
+fi
 
 echo
 echo "== ledger parses"

@@ -162,7 +162,7 @@ See `.claude/hooks/README.md`.
 | `60-dispatch-end` | Nothing — it measures what a dispatch returned |
 | `70-commit-landed` | Nothing — it measures what actually got committed |
 
-Their behavior is covered by 147 cases across five suites in
+Their behavior is covered by 159 cases across five suites in
 `.claude/hooks/test-*.sh`, which `install-check.sh` runs for you.
 
 ## Measurement
@@ -171,11 +171,14 @@ The last two hooks write a session event log to `.metrics/`, gitignored:
 dispatches by tier, what each report contained, commits and their real sizes.
 `.claude/scripts/metrics.sh` turns it into the block `retro` and `status` print,
 including **what each opus dispatch actually found** — the number that says
-whether an expensive lane earned its cost.
-
-Token cost per tier is deliberately NOT implemented. `docs/METRICS.md` holds the
-three routes and what each needs verified first; guessing a split would be worse
-than having none.
+whether an expensive lane earned its cost. `.claude/scripts/session-tokens.sh`
+prices that session from its own local transcript, tier by tier, chair turn
+against worker turn. `.claude/scripts/trace.sh` reads a plan and its ledger
+instead of the event log — orphan criteria, unproven criteria, ledger items no
+task claims, untraced or unclosed tasks, deferrals with no recorded approval —
+so the sponsor can check the requirement trail without taking the chair's word
+for it. All three are self-testing (`--self-test`), and `install-check.sh` runs
+every one of them.
 
 ## After installing
 

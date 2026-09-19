@@ -46,6 +46,19 @@ you see a `session-test.jsonl` in your `.metrics/`, it is residue from a version
 before 0.3.2 and is safe to delete — as is any `session-nosession.jsonl`, which
 comes from running a hook by hand with no session id.
 
+### Commit → task: inferred, not joined
+
+No event carries a task id on a `commit_landed` — workers never commit
+(`dispatch` rule 6), so there is nothing analogous to `dispatch`'s `task` field
+to write there, and the 005 round considered and rejected a commit trailer for
+this reason (`docs/plans/005-traceability.md`, Decisions). What `metrics.sh`'s
+direct-lane block and `trace.sh`'s chair-conduct pricing both compute instead is
+**time order**: a `commit_landed` with no `dispatch` event since the previous
+`commit_landed` had no worker precede it. That establishes no worker preceded
+the commit — never who wrote the code, and never which task it closed. Do not
+read "direct-lane" or "chair window" as an exact join; both report surfaces say
+so in their own printed output, not only here.
+
 ### `origin`, and why some events refuse to name an agent
 
 Hooks fire inside subagents as well as the main session. An earlier edit-budget
