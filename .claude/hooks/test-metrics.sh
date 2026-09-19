@@ -171,6 +171,19 @@ hook 70-commit-landed.sh "$B" "$R" >/dev/null
 hook 70-commit-landed.sh "$B" "$R" >/dev/null
 eq "an unmoved HEAD is never counted twice" 1 "$(ev_count commit_landed)"
 
+# A repo with no commits yet: the baseline is a sentinel, so the very first
+# commit of the session still counts. Without it every call looks like the
+# first one and that commit is lost.
+E="$TMP/empty"; mkdir -p "$E"; git -C "$E" init -q
+git -C "$E" config user.email t@t; git -C "$E" config user.name t
+BEFORE=$(ev_count commit_landed)
+hook 70-commit-landed.sh "$B" "$E" >/dev/null
+printf 'first\n' > "$E/a.txt"; git -C "$E" add a.txt; git -C "$E" commit -qm "feat: first ever"
+hook 70-commit-landed.sh "$B" "$E" >/dev/null
+eq "the first commit in an empty repo is recorded" "$((BEFORE + 1))" "$(ev_count commit_landed)"
+eq "and no malformed event was written" 0 \
+   "$(events | jq -r 'select(.event=="commit_landed" and .head == null)' | wc -l | tr -d ' ')"
+
 echo
 echo "--- the whole log is valid JSON, every line"
 eq "jq -s parses it" 0 "$(events | jq -s '.' >/dev/null 2>&1; printf %s $?)"

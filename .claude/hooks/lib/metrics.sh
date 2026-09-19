@@ -129,8 +129,16 @@ metrics_numstat_json() {
 # second hook invocation counting the same commit twice.
 metrics_head_moved() {
   local now last
-  now=$(git rev-parse HEAD 2>/dev/null) || return 1
-  [ -n "$now" ] || return 1
+  # A repo with no commits yet prints the sentinel rather than failing. Without
+  # it, the baseline is never recorded in an empty repo and the FIRST commit
+  # made in that session goes unlogged — every call keeps looking like the
+  # first one.
+  # --verify --quiet, NOT a bare rev-parse: in a repo with no commits `git
+  # rev-parse HEAD` prints the literal string "HEAD" on stdout and then fails,
+  # so the obvious `|| printf none` yields "HEADnone" and the sentinel silently
+  # stops working.
+  now=$(git rev-parse --verify --quiet HEAD 2>/dev/null) || now=''
+  [ -n "$now" ] || now=none
   last=$(cat "$(_metrics_head)" 2>/dev/null || printf '')
   [ "$now" = "$last" ] && return 1
   printf '%s' "$now" > "$(_metrics_head)" 2>/dev/null || true

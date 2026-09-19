@@ -35,12 +35,15 @@ SESSION=$(printf '%s' "$INPUT" | jq -r '.session_id // "nosession"' 2>/dev/null 
 metrics_init "$SESSION"
 
 # On the first Bash call of a session this records the starting HEAD and logs
-# nothing, which is correct: nothing was committed yet.
+# nothing, which is correct: nothing was committed yet. In a repo with no
+# commits at all the baseline is the sentinel 'none', so the first commit made
+# during the session still registers as movement.
 FIRST=0
 [ -f "$(_metrics_head)" ] || FIRST=1
 
 HEAD_NOW=$(metrics_head_moved) || exit 0
 [ "$FIRST" -eq 1 ] && exit 0
+[ "$HEAD_NOW" = none ] && exit 0
 
 SUBJECT=$(git log -1 --format=%s 2>/dev/null || printf '')
 TYPE=$(metrics_commit_type "$SUBJECT")
