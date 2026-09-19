@@ -104,7 +104,8 @@ emit_usage() {  # emit_usage <lane> <run-key> <file>
         (.message.usage.input_tokens // 0),
         (.message.usage.output_tokens // 0),
         (.message.usage.cache_read_input_tokens // 0),
-        (.message.usage.cache_creation_input_tokens // 0) ]
+        (.message.usage.cache_creation_input_tokens // 0),
+        (.timestamp // "-") ]
     | @tsv' "$3" 2>/dev/null || true
 }
 # The dedupe key is emitted as "-" rather than "" when a row carries neither a
@@ -113,6 +114,9 @@ emit_usage() {  # emit_usage <lane> <run-key> <file>
 # collapses to one delimiter and every field after the empty one shifts left. A
 # 25-output-token turn then priced as if `output_tokens` were the model name.
 # Found by the 0.4.2 self-test; latent since the reader was written.
+# `.timestamp` (appended last, field 9, never inserted mid-row) is real ISO
+# 8601 on every assistant turn in a real transcript; "-" is only a fixture/
+# malformed-row fallback, kept for the same reason as `rid` above.
 
 # The agentId a worker file belongs to — the join key back to the event log.
 agent_id_of() { jq -r -c 'select(.agentId != null) | .agentId' "$1" 2>/dev/null | head -1; }
@@ -152,16 +156,16 @@ if [ "$SELFTEST" -eq 1 ]; then
   trap 'rm -rf "$T"' EXIT
   mkdir -p "$T/proj" "$T/tx/sess-1/subagents"
   cat > "$T/tx/sess-1.jsonl" <<'FIX'
-{"type":"assistant","requestId":"r1","message":{"model":"claude-fable-5-1","usage":{"input_tokens":10,"output_tokens":100,"cache_read_input_tokens":200000,"cache_creation_input_tokens":0}}}
-{"type":"assistant","requestId":"r1","message":{"model":"claude-fable-5-1","usage":{"input_tokens":10,"output_tokens":100,"cache_read_input_tokens":200000,"cache_creation_input_tokens":0}}}
+{"type":"assistant","requestId":"r1","timestamp":"2026-09-19T01:05:00.000Z","message":{"model":"claude-fable-5-1","usage":{"input_tokens":10,"output_tokens":100,"cache_read_input_tokens":200000,"cache_creation_input_tokens":0}}}
+{"type":"assistant","requestId":"r1","timestamp":"2026-09-19T01:05:00.000Z","message":{"model":"claude-fable-5-1","usage":{"input_tokens":10,"output_tokens":100,"cache_read_input_tokens":200000,"cache_creation_input_tokens":0}}}
 {"type":"user","message":{"role":"user","content":"ignored"}}
 FIX
   cat > "$T/tx/sess-1/subagents/agent-abc123def456.jsonl" <<'FIX'
 {"type":"user","isSidechain":true,"agentId":"abc123def456","message":{"role":"user","content":"brief"}}
-{"type":"assistant","requestId":"w1","agentId":"abc123def456","message":{"model":"claude-opus-5","usage":{"input_tokens":5,"output_tokens":50,"cache_read_input_tokens":100000,"cache_creation_input_tokens":0}}}
-{"type":"assistant","agentId":"abc123def456","message":{"model":"claude-opus-5","usage":{"input_tokens":5,"output_tokens":25,"cache_read_input_tokens":100000,"cache_creation_input_tokens":0}}}
-{"type":"assistant","requestId":"w2","agentId":"abc123def456","message":{"model":"claude-opus-5","content":[{"type":"thinking","thinking":"..."}],"usage":{"input_tokens":5,"output_tokens":4,"cache_read_input_tokens":100000,"cache_creation_input_tokens":0}}}
-{"type":"assistant","requestId":"w2","agentId":"abc123def456","message":{"model":"claude-opus-5","content":[{"type":"tool_use","name":"SubagentHandback","input":{"message":"## Verdict: FIX FIRST\n## Findings\n- [blocker] a.ts:1 - boom - fix it\n- [nit] b.ts:2 - meh - tidy\n## Evidence\nran the tests"}}],"usage":{"input_tokens":5,"output_tokens":50,"cache_read_input_tokens":100000,"cache_creation_input_tokens":0}}}
+{"type":"assistant","requestId":"w1","agentId":"abc123def456","timestamp":"2026-09-19T01:15:05.000Z","message":{"model":"claude-opus-5","usage":{"input_tokens":5,"output_tokens":50,"cache_read_input_tokens":100000,"cache_creation_input_tokens":0}}}
+{"type":"assistant","agentId":"abc123def456","timestamp":"2026-09-19T01:15:10.000Z","message":{"model":"claude-opus-5","usage":{"input_tokens":5,"output_tokens":25,"cache_read_input_tokens":100000,"cache_creation_input_tokens":0}}}
+{"type":"assistant","requestId":"w2","agentId":"abc123def456","timestamp":"2026-09-19T01:20:00.000Z","message":{"model":"claude-opus-5","content":[{"type":"thinking","thinking":"..."}],"usage":{"input_tokens":5,"output_tokens":4,"cache_read_input_tokens":100000,"cache_creation_input_tokens":0}}}
+{"type":"assistant","requestId":"w2","agentId":"abc123def456","timestamp":"2026-09-19T01:20:01.000Z","message":{"model":"claude-opus-5","content":[{"type":"tool_use","name":"SubagentHandback","input":{"message":"## Verdict: FIX FIRST\n## Findings\n- [blocker] a.ts:1 - boom - fix it\n- [nit] b.ts:2 - meh - tidy\n## Evidence\nran the tests"}}],"usage":{"input_tokens":5,"output_tokens":50,"cache_read_input_tokens":100000,"cache_creation_input_tokens":0}}}
 FIX
   # A /clear leaves this: a real transcript, newer, with no billed turns. The
   # reader must skip it — picking it reports "nothing happened" about a session
@@ -173,11 +177,38 @@ FIX
   touch "$T/tx/sess-2-cleared.jsonl"
 
   mkdir -p "$T/proj/.metrics"
+  # commit_landed x3, ordered to cover the three cases the plan requires:
+  #   c3c3c3c3 — first event in the log, direct-lane, but its ts (00:50) is
+  #     BEFORE the earliest priced main-lane turn (r1 @ 01:05) — the "commit
+  #     landed before any priced turn" UNAVAILABLE case.
+  #   c1c1c1c1 — direct-lane (still no dispatch event has been seen), window
+  #     (00:50, 01:10] — catches r1 @ 01:05. A window WITH main-lane turns.
+  #   c2c2c2c2 — direct-lane, window (01:10, 01:12] — catches nothing (r1
+  #     already fell in the previous window). A window with none.
+  # The dispatch/dispatch_launched/dispatch_end trio comes AFTER all three
+  # commits, so none of them is preceded by a dispatch and all three stay
+  # direct-lane; it still exists so the join/verdict assertions below hold.
   cat > "$T/proj/.metrics/session-sess-1.jsonl" <<'FIX'
-{"event":"dispatch","ts":"2026-09-19T01:00:00Z","session":"sess-1","origin":"main","agent":"critic","tier":"opus","task":"T7","brief_bytes":100}
-{"event":"dispatch_launched","ts":"2026-09-19T01:00:01Z","session":"sess-1","origin":"main","agent":"critic","agent_id":"abc123def456"}
-{"event":"dispatch_end","ts":"2026-09-19T01:20:00Z","session":"sess-1","origin":"main","source":"subagent_stop","duration_s":1199}
+{"event":"commit_landed","ts":"2026-09-19T00:50:00Z","session":"sess-1","head":"c3c3c3c3deadbeef","commit_type":"fix","files":1,"insertions":10}
+{"event":"commit_landed","ts":"2026-09-19T01:10:00Z","session":"sess-1","head":"c1c1c1c1cafebabe","commit_type":"feat","files":2,"insertions":30}
+{"event":"commit_landed","ts":"2026-09-19T01:12:00Z","session":"sess-1","head":"c2c2c2c2feedface","commit_type":"fix","files":1,"insertions":5}
+{"event":"dispatch","ts":"2026-09-19T01:15:00Z","session":"sess-1","origin":"main","agent":"critic","tier":"opus","task":"T7","brief_bytes":100}
+{"event":"dispatch_launched","ts":"2026-09-19T01:15:01Z","session":"sess-1","origin":"main","agent":"critic","agent_id":"abc123def456"}
+{"event":"dispatch_end","ts":"2026-09-19T01:35:00Z","session":"sess-1","origin":"main","source":"subagent_stop","duration_s":1199}
 FIX
+
+  # A second, separate fixture: one commit, one preceding turn, and that
+  # commit is the FIRST (and only) commit_landed in its own log — unlike
+  # sess-1's c3c3c3c3, this one has a real turn before it and must NOT report
+  # UNAVAILABLE. Used below to assert the IFS-tab squeeze stays fixed.
+  mkdir -p "$T/proj2/.metrics" "$T/tx2"
+  cat > "$T/tx2/sess-2.jsonl" <<'FIX'
+{"type":"assistant","requestId":"z1","timestamp":"2026-09-19T00:30:00.000Z","message":{"model":"claude-fable-5-1","usage":{"input_tokens":10,"output_tokens":100,"cache_read_input_tokens":0,"cache_creation_input_tokens":0}}}
+FIX
+  cat > "$T/proj2/.metrics/session-sess-2.jsonl" <<'FIX'
+{"event":"commit_landed","ts":"2026-09-19T01:00:00Z","session":"sess-2","head":"onlycommit00000","commit_type":"fix","files":1,"insertions":5}
+FIX
+
   BEFORE=$(find "$T" -type f | sort | while read -r f; do printf '%s %s\n' "$f" "$(wc -c <"$f")"; done)
 
   OUT=$(CLAUDE_PROJECT_DIR="$T/proj" CLAUDE_TRANSCRIPT_DIR="$T/tx" METRICS_DIR="$T/proj/.metrics" \
@@ -203,6 +234,51 @@ FIX
   printf '%s' "$OUT" | grep -qi 'boom'       && fail "finding TEXT leaked into the report"
   printf '%s' "$OUT" | grep -q "$RATES_ASOF" || fail "rates date not printed"
 
+  # T5 CHANGE 2: the per-turn price ratio — main vs. the worker tier present.
+  printf '%s' "$OUT" | grep -q 'Per-turn price ratio' \
+    || fail "per-turn price ratio block missing"
+  printf '%s' "$OUT" | grep -qE 'worker opus.*\(main is [0-9.]+x\)' \
+    || fail "per-turn price ratio did not state a ratio against the opus worker tier"
+
+  # T5 CHANGE 3: the chair-windows block (AC-6, AC-7). Three fixture commits,
+  # three required cases: a window with main-lane turns in it (c1c1c1c1), a
+  # window with none (c2c2c2c2), and a commit landing before any priced turn
+  # (c3c3c3c3) — UNAVAILABLE for THAT window only, not the whole block.
+  printf '%s' "$OUT" | grep -qi 'ceiling' \
+    || fail "chair-windows block did not state the ceiling wording in its printed output"
+  printf '%s' "$OUT" | grep -q 'never an attribution' \
+    || fail "chair-windows block did not state the never-an-attribution wording"
+  printf '%s' "$OUT" | grep -qE 'c1c1c1c1 +1 turn' \
+    || fail "chair-windows: c1c1c1c1's window should catch the one main-lane turn in range"
+  printf '%s' "$OUT" | grep -qE 'c2c2c2c2 +0 turn' \
+    || fail "chair-windows: c2c2c2c2's window should catch no main-lane turns"
+  printf '%s' "$OUT" | grep -qE 'c3c3c3c3 +UNAVAILABLE — commit landed before any priced turn' \
+    || fail "chair-windows: c3c3c3c3 should report UNAVAILABLE (its ts predates the earliest priced turn)"
+  # The other two windows must NOT be swallowed by that one window's UNAVAILABLE.
+  printf '%s' "$OUT" | grep -qE 'c1c1c1c1 +1 turn.*ceiling' \
+    || fail "chair-windows: c1c1c1c1's window should still price, unaffected by c3c3c3c3's UNAVAILABLE"
+
+  # THE IFS-TAB SQUEEZE DEFECT, ASSERTED DIRECTLY. The windows TSV's `start`
+  # field is genuinely empty ("-") for the FIRST commit_landed in any log — no
+  # prior commit exists to bound the window's start. `read -r head start end`
+  # over a tab-delimited row with an empty middle field is exactly the 003
+  # defect documented above emit_usage: IFS set to a tab still squeezes a run
+  # of tabs to one delimiter, so the blank field vanishes and every field
+  # after it shifts left — `end` silently becomes "", which then compares as
+  # less than any real EARLIEST_MAIN and every first commit misreports
+  # UNAVAILABLE even when real turns preceded it. sess-1 above cannot catch
+  # this: its own first commit (c3c3c3c3) genuinely deserves UNAVAILABLE, so
+  # the bug would produce the right answer by the wrong mechanism. sess-2's
+  # fixture (written above, before BEFORE) does NOT deserve it — a real turn
+  # precedes its one and only commit — so this assertion fails if the squeeze
+  # regresses.
+  OUT3=$(CLAUDE_PROJECT_DIR="$T/proj2" CLAUDE_TRANSCRIPT_DIR="$T/tx2" METRICS_DIR="$T/proj2/.metrics" \
+         "$0" sess-2 2>&1) || { printf '%s\n' "$OUT3"; die "self-test: sess-2 run exited non-zero"; }
+  printf '%s' "$OUT3" | grep -qE 'onlycomm +1 turn' \
+    || { printf '%s\n' "$OUT3" >&2; fail "chair-windows: a real turn preceding the log's first commit must be counted, not squeezed into UNAVAILABLE"; }
+  printf '%s' "$OUT3" | grep -q 'onlycomm.*before any priced turn' \
+    && { printf '%s\n' "$OUT3" >&2; fail "chair-windows: the log's first commit wrongly reported UNAVAILABLE despite a real preceding turn (IFS-tab squeeze regressed)"; }
+
   # THE 0.4.1 DEFECT, ASSERTED DIRECTLY. With no session named, the reader must
   # skip the newer /clear transcript and land on the one that billed something.
   OUT2=$(CLAUDE_PROJECT_DIR="$T/proj" CLAUDE_TRANSCRIPT_DIR="$T/tx" METRICS_DIR="$T/proj/.metrics" \
@@ -214,7 +290,7 @@ FIX
 
   AFTER=$(find "$T" -type f | sort | while read -r f; do printf '%s %s\n' "$f" "$(wc -c <"$f")"; done)
   [ "$BEFORE" = "$AFTER" ] || fail "the reader modified its input tree"
-  printf 'self-test OK — dedupe (split + id-less rows), join, verdict, /clear skip, no content leak, inputs untouched\n'
+  printf 'self-test OK — dedupe (split + id-less rows), join, verdict, /clear skip, no content leak, per-turn ratio, chair-windows (with/without turns, before-priced-turn), inputs untouched\n'
   exit 0
 fi
 
@@ -319,13 +395,13 @@ awk -F'\t' '
     if (!(k in pos)) pos[k] = ++n
     row[k] = $0 }
   END { for (k in row) printf "%09d\t%s\n", pos[k], row[k] }
-' "$TMP/rows" | sort -n | cut -f2- | while IFS=$'\t' read -r lane run rid model i o cr cw; do
+' "$TMP/rows" | sort -n | cut -f2- | while IFS=$'\t' read -r lane run rid model i o cr cw ts; do
   set -- $(rates_for "$model")
   cost=$(awk -v i="$i" -v o="$o" -v cr="$cr" -v cw="$cw" \
              -v a="$1" -v b="$2" -v c="$3" -v d="$4" \
              'BEGIN { printf "%.6f", (i*a + o*b + cr*c + cw*d) / 1000000 }')
-  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
-    "$lane" "$run" "$(tier_of "$model")" "$i" "$o" "$cr" "$cw" "$cost" >> "$TMP/priced"
+  printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+    "$lane" "$run" "$(tier_of "$model")" "$i" "$o" "$cr" "$cw" "$cost" "$ts" >> "$TMP/priced"
 done
 
 TURNS=$(wc -l < "$TMP/priced" | tr -d ' ')
@@ -356,12 +432,30 @@ awk -F'\t' '
   }' "$TMP/priced" | sed 's/^SORT[0-9]*//'
 
 # --- the turn-budget lever ---------------------------------------------------
-printf '\n   Spend past turn 30 of a worker run\n'
+# Per lane, not only "worker": the chair's own thread ($2 is the constant key
+# "main", so idx[] there counts the WHOLE thread's turn order) accumulates
+# context the same way a worker run does, and the same late-turn cost bloat is
+# honest to show for both.
+printf '\n   Spend past turn 30 of a run\n'
 awk -F'\t' '
-  $1 == "worker" { idx[$2]++; tot += $8; if (idx[$2] > 30) late += $8; if (idx[$2] > 40) late40 += $8 }
+  { l = $1; idx[l SUBSEP $2]++; tot[l] += $8
+    if (idx[l SUBSEP $2] > 30) late[l] += $8
+    if (idx[l SUBSEP $2] > 40) late40[l] += $8 }
   END {
-    if (tot == 0) { print "   no worker turns this session"; exit }
-    printf "   %.0f%% of worker spend landed after turn 30, %.0f%% after turn 40.\n", 100*late/tot, 100*late40/tot
+    n_lanes = 0
+    if ("main" in tot) {
+      n_lanes++
+      if (tot["main"] == 0) printf "   %-8s no turns this session\n", "main"
+      else printf "   %-8s %.0f%% of spend landed after turn 30, %.0f%% after turn 40.\n", \
+                   "main", 100*late["main"]/tot["main"], 100*late40["main"]/tot["main"]
+    }
+    if ("worker" in tot) {
+      n_lanes++
+      if (tot["worker"] == 0) printf "   %-8s no turns this session\n", "worker"
+      else printf "   %-8s %.0f%% of spend landed after turn 30, %.0f%% after turn 40.\n", \
+                   "worker", 100*late["worker"]/tot["worker"], 100*late40["worker"]/tot["worker"]
+    }
+    if (n_lanes == 0) { print "   no turns this session"; exit }
     print  "   Context grows through a run and every turn re-reads all of it, so late"
     print  "   turns cost multiples of early ones. A high number here is an argument for"
     print  "   a tighter maxTurns or a narrower brief, not for a cheaper model."
@@ -400,5 +494,139 @@ else
     printf '\n   unjoined runs: %s — no dispatch_launched event carried their agent_id.\n' "$U"
     printf '   Their turns and costs above are real; their roles are not known, and\n'
     printf '   nothing is attributed by guess. A log written before 0.4.0 has none.\n'
+  fi
+fi
+
+# --- the per-turn price ratio -------------------------------------------------
+# A turn is a comparable unit of work across lanes, where a run or a dollar is
+# not: a worker run's turn count is bounded by maxTurns and its own brief, and
+# the main thread's is bounded by nothing. This prices the chair's own thread
+# against each worker TIER present (grouped by $3 in $TMP/priced, not by
+# individual run — a tier is what a tiering decision is actually made over).
+# billable tok/turn reuses the summary table's own shape, sum($4+$5+$6+$7)/n.
+#
+# The ratio this produces is computed fresh, every run, from whatever session
+# it is pointed at — never hardcoded. A real prior session once measured chair
+# ~247k billable/turn vs sonnet worker ~87k/turn (~2.8x), with output/turn
+# nearly identical across lanes; that number belongs to that session, not this
+# script.
+printf '\n   Per-turn price ratio (a turn is a comparable unit of work across lanes)\n'
+awk -F'\t' '
+  $1 == "main"   { n_main++; tok_main += $4+$5+$6+$7; out_main += $5 }
+  $1 == "worker" { n[$3]++;  tok[$3]  += $4+$5+$6+$7; out[$3]  += $5 }
+  END {
+    if (n_main == 0) { print "   main : 0 turns this session — nothing to compare"; exit }
+    avg_main = tok_main / n_main; avgout_main = out_main / n_main
+    printf "   %-14s: %d turns, avg %.0f billable tok/turn, avg %.0f out tok/turn\n", \
+           "main", n_main, avg_main, avgout_main
+
+    have_worker = 0
+    order = "opus sonnet fable haiku other"
+    split(order, tiers, " ")
+    for (i = 1; i <= 5; i++) {
+      t = tiers[i]
+      if (!(t in n) || n[t] == 0) continue
+      have_worker = 1
+      avg_t = tok[t] / n[t]; avgout_t = out[t] / n[t]
+      label = "worker " t
+      if (avg_t > 0) ratio = sprintf("(main is %.1fx)", avg_main / avg_t)
+      else           ratio = "(no billable tokens this tier — no ratio)"
+      printf "   %-14s: %d turns, avg %.0f billable tok/turn, avg %.0f out tok/turn   %s\n", \
+             label, n[t], avg_t, avgout_t, ratio
+    }
+    if (!have_worker) print "   no worker turns this session — no tier to compare against"
+  }' "$TMP/priced"
+
+# --- chair-authored windows (AC-6, AC-7) --------------------------------------
+# What the chair's OWN hands-on windows could have cost, priced against
+# comparable briefed work in the same session — a CEILING on that window's
+# work, never what it actually cost and never an attribution of it: the same
+# window also holds planning, reading reports and talking to the sponsor, not
+# only the commit that closed it.
+#
+# A window is direct-lane work: a commit_landed event with no dispatch event
+# between it and the previous commit_landed. Same definition, same jq reduce
+# shape, as metrics.sh's own "## Commits" direct-lane block (just landed this
+# session) — no shared library function for one call site each.
+printf '\n   Chair-authored windows — a CEILING on cost, never an attribution\n'
+printf '   Prices the main-lane turns between one landed commit and the last. This is\n'
+printf '   the MOST that window'"'"'s work could have cost, not what it did cost: the\n'
+printf '   same window also holds planning, reading reports and talking to the\n'
+printf '   sponsor, not only the commit that closed it.\n'
+
+if [ ! -f "$EVLOG" ]; then
+  printf '   UNAVAILABLE — no commit_landed events in %s, nothing to window\n' "$EVLOG"
+elif [ "$(jq -r -c 'select(.event == "commit_landed") | 1' "$EVLOG" 2>/dev/null | head -1)" != "1" ]; then
+  printf '   UNAVAILABLE — no commit_landed events in %s, nothing to window\n' "$EVLOG"
+else
+  # "-" for a missing start below, never "": an EMPTY tab-delimited field is
+  # the exact 003 IFS-tab defect documented above emit_usage — read with IFS
+  # set to a tab still squeezes a run of tabs to one delimiter, so a commit
+  # with no prior window (the first commit_landed in the log) would have its
+  # blank start field silently absorbed and every field after it shift left,
+  # corrupting `end` and misreporting a real window as UNAVAILABLE. Found by
+  # hand-testing this block directly, not by the self-test as first written:
+  # the original fixture's own first commit genuinely deserved UNAVAILABLE,
+  # so the bug produced the right answer by the wrong mechanism. See the
+  # added self-test case below, which does not have that property.
+  jq -r -s '
+    [.[] | select(.event == "dispatch" or .event == "commit_landed")]
+    | reduce .[] as $e (
+        {seen: false, prev: null, out: []};
+        if $e.event == "dispatch" then
+          {seen: true, prev: .prev, out: .out}
+        elif .seen then
+          {seen: false, prev: $e.ts, out: .out}
+        else
+          {seen: false, prev: $e.ts,
+           out: (.out + [{head: (($e.head // "")[0:8]), start: .prev, end: $e.ts}])}
+        end)
+    | .out[]
+    | [.head, (.start // "-"), .end] | @tsv
+  ' "$EVLOG" 2>/dev/null > "$TMP/windows"
+
+  if [ ! -s "$TMP/windows" ]; then
+    printf '   UNAVAILABLE — no commit_landed events in %s, nothing to window\n' "$EVLOG"
+  else
+    # Earliest main-lane turn carrying a real timestamp — the floor below which
+    # a window cannot be priced because this transcript does not cover it.
+    EARLIEST_MAIN=$(awk -F'\t' '$1 == "main" && $9 != "-" { print $9 }' "$TMP/priced" | sort | head -1)
+
+    # Median of this session's own briefed-run costs (Change 2's $TMP/runcost,
+    # untouched). Absent or empty means no worker runs this session at all.
+    HAVE_MEDIAN=0
+    if [ -s "$TMP/runcost" ]; then
+      HAVE_MEDIAN=1
+      MEDIAN=$(awk -F'\t' '{ print $2 }' "$TMP/runcost" | sort -n | awk '
+        { a[NR] = $1 }
+        END { if (NR == 0) { print 0 }
+              else if (NR % 2 == 1) { print a[(NR+1)/2] }
+              else { print (a[NR/2] + a[NR/2+1]) / 2 } }')
+    fi
+
+    while IFS=$'\t' read -r head start end; do
+      if [ -z "$EARLIEST_MAIN" ] || [[ "$end" < "$EARLIEST_MAIN" ]]; then
+        printf '   %-10s UNAVAILABLE — commit landed before any priced turn, window start unknown\n' "$head"
+        continue
+      fi
+      if [ "$start" != "-" ]; then
+        READOUT=$(awk -F'\t' -v s="$start" -v e="$end" '
+          $1 == "main" && $9 != "-" && $9 > s && $9 <= e { n++; tok += $4+$5+$6+$7; cost += $8 }
+          END { printf "%d\t%d\t%.4f", n+0, tok+0, cost+0 }' "$TMP/priced")
+      else
+        READOUT=$(awk -F'\t' -v e="$end" '
+          $1 == "main" && $9 != "-" && $9 <= e { n++; tok += $4+$5+$6+$7; cost += $8 }
+          END { printf "%d\t%d\t%.4f", n+0, tok+0, cost+0 }' "$TMP/priced")
+      fi
+      IFS=$'\t' read -r WT WTOK WCOST <<< "$READOUT"
+      if [ "$HAVE_MEDIAN" -eq 1 ]; then
+        RATIO=$(awk -v c="$WCOST" -v m="$MEDIAN" 'BEGIN { if (m+0 == 0) print "n/a"; else printf "%.1fx", c/m }')
+        printf '   %-10s %d turn(s), %d billable tok, est $%.2f ceiling  (%s the session'"'"'s median briefed-task cost)\n' \
+          "$head" "$WT" "$WTOK" "$WCOST" "$RATIO"
+      else
+        printf '   %-10s %d turn(s), %d billable tok, est $%.2f ceiling  (UNAVAILABLE — no worker runs this session to compare against)\n' \
+          "$head" "$WT" "$WTOK" "$WCOST"
+      fi
+    done < "$TMP/windows"
   fi
 fi
