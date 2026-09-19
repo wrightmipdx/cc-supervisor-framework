@@ -225,6 +225,60 @@ guess was a *split* — a fabricated attribution of cost across lanes. What is
 asserted here is a *price*: stated as an assumption, dated, and in one editable
 place.
 
+### Cache TTL — measured 2026-09-19, and deliberately left alone
+
+Claude Code assigns a prompt-cache TTL per request from two fixed buckets. On a
+Claude subscription within plan usage, the **main conversation** gets one hour;
+**everything else** — subagents, workflows, forks, compaction, session titles —
+gets five minutes. This is documented behaviour, not a regression:
+<https://code.claude.com/docs/en/prompt-caching>. It is visible directly in any
+transcript, because each turn's `usage.cache_creation` splits the write:
+
+```sh
+jq -r 'select(.type=="assistant" and .message.usage.cache_creation!=null)
+       | "\(.message.model) 5m=\(.message.usage.cache_creation.ephemeral_5m_input_tokens) 1h=\(.message.usage.cache_creation.ephemeral_1h_input_tokens)"' \
+   ~/.claude/projects/<slug>/<session>.jsonl
+```
+
+Measured over the two 0.4.1 sessions in `~/projects/opanalyst`, the split is
+total: the chair wrote 909,307 one-hour tokens and zero five-minute; the 22
+worker runs wrote 3,666,585 five-minute tokens and zero one-hour.
+
+**This has cost the framework nothing, and buying the hour would cost money.**
+A worker here is burst-shaped: it reads a brief, runs hot for ten to seventy
+back-to-back turns, and exits. Across all 22 runs in both sessions, **zero**
+inter-turn gaps exceeded 300s; the longest was 254s and the next was 104s. The
+worker write/read ratio is 0.03 — the five-minute cache is hitting on
+essentially every turn. A one-hour TTL bills writes at 2x base instead of 1.25x,
+so setting `subagentPromptCacheTtl: 1h` would have added roughly **$6 to a $62
+session for no additional cache hit**. No setting is changed, and none should
+be on this evidence.
+
+Re-measure before overriding that, from the project whose sessions you are
+judging:
+
+```sh
+for f in ~/.claude/projects/<slug>/<session>/subagents/agent-*.jsonl; do
+  jq -r 'select(.type=="assistant" and .message.usage!=null)
+         | [.timestamp,(.message.usage.cache_creation_input_tokens//0),
+                       (.message.usage.cache_read_input_tokens//0)] | @tsv' "$f" \
+  | awk -F'\t' -v n="$(basename "$f")" '
+      { cmd = "date -j -f %Y-%m-%dT%H:%M:%S " substr($1,1,19) " +%s"
+        cmd | getline t; close(cmd)
+        if (NR > 1) { g = t - pt; if (g > m) m = g; if (g > 300) big++ }
+        pt = t; w += $2; r += $3 }
+      END { printf "%s maxgap=%ds gaps>300s=%d write/read=%.2f\n", n, m, big+0, w/r }'
+done
+```
+
+**The one case that flips the verdict is a resumed worker.** A run resumed after
+a human-length gap starts cold, and so does any run whose brief contains a tool
+call longer than five minutes — a full build, a browser pass, a large suite. If
+that becomes routine, the answer is `experimental.cacheTtl: 1h` on the one agent
+that needs it (`.claude/agents/<name>.md`, Claude Code v2.1.248+), never the
+global `subagentPromptCacheTtl`. Run the command above at any retro where a
+worker overran its wall-clock, and record what it said.
+
 ### What it does not do
 
 No cross-session or cross-project rollup — the instrument is session-specific by

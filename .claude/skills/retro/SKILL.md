@@ -55,8 +55,17 @@ The hooks wrote the event log during the session and the transcript wrote
 itself; you wrote neither, and bookkeeping in the chair's context costs chair
 tokens, which is the thing being measured.
 
-Read the four blocks that carry a decision, and **say which way you land on each
-one**. A number nobody judged is a number nobody will act on.
+**Reproduce the report verbatim first, then judge it.** Paste the block the
+script printed into your reply before you say anything about it. Do not retype
+its figures into prose and do not summarise the table away. Measured across two
+0.4.1 sessions, a chair that narrated the report instead of showing it reported
+68% where the script said 71%, 41% where it said 40%, and 39% where it said 40%:
+nothing fabricated, no judgment flipped, and no way for the user to check any of
+it. Prime rule 2 is enforced on these exact numbers, and a governance number
+that reaches the user only through a retyping has no audit trail.
+
+Then read the four blocks that carry a decision, and **say which way you land on
+each one**. A number nobody judged is a number nobody will act on.
 
 **1. Opus share of cost.** `CLAUDE.md` prime rule 2 governs the combined opus
 share — Supervisor **plus** `architect` **plus** `critic`. The ~25% figure is a

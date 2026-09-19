@@ -99,7 +99,7 @@ emit_usage() {  # emit_usage <lane> <run-key> <file>
   jq -c -r --arg lane "$1" --arg run "$2" '
     select(.type == "assistant" and (.message.usage != null))
     | [ $lane, $run,
-        (.requestId // .uuid // ""),
+        (.requestId // .uuid // "-"),
         (.message.model // "unknown"),
         (.message.usage.input_tokens // 0),
         (.message.usage.output_tokens // 0),
@@ -107,6 +107,12 @@ emit_usage() {  # emit_usage <lane> <run-key> <file>
         (.message.usage.cache_creation_input_tokens // 0) ]
     | @tsv' "$3" 2>/dev/null || true
 }
+# The dedupe key is emitted as "-" rather than "" when a row carries neither a
+# requestId nor a uuid. AN EMPTY FIELD CANNOT SURVIVE THE READ LOOP: `read` with
+# IFS set to a tab still applies the IFS-whitespace rule, so a run of tabs
+# collapses to one delimiter and every field after the empty one shifts left. A
+# 25-output-token turn then priced as if `output_tokens` were the model name.
+# Found by the 0.4.2 self-test; latent since the reader was written.
 
 # The agentId a worker file belongs to — the join key back to the event log.
 agent_id_of() { jq -r -c 'select(.agentId != null) | .agentId' "$1" 2>/dev/null | head -1; }
@@ -153,6 +159,8 @@ FIX
   cat > "$T/tx/sess-1/subagents/agent-abc123def456.jsonl" <<'FIX'
 {"type":"user","isSidechain":true,"agentId":"abc123def456","message":{"role":"user","content":"brief"}}
 {"type":"assistant","requestId":"w1","agentId":"abc123def456","message":{"model":"claude-opus-5","usage":{"input_tokens":5,"output_tokens":50,"cache_read_input_tokens":100000,"cache_creation_input_tokens":0}}}
+{"type":"assistant","agentId":"abc123def456","message":{"model":"claude-opus-5","usage":{"input_tokens":5,"output_tokens":25,"cache_read_input_tokens":100000,"cache_creation_input_tokens":0}}}
+{"type":"assistant","requestId":"w2","agentId":"abc123def456","message":{"model":"claude-opus-5","content":[{"type":"thinking","thinking":"..."}],"usage":{"input_tokens":5,"output_tokens":4,"cache_read_input_tokens":100000,"cache_creation_input_tokens":0}}}
 {"type":"assistant","requestId":"w2","agentId":"abc123def456","message":{"model":"claude-opus-5","content":[{"type":"tool_use","name":"SubagentHandback","input":{"message":"## Verdict: FIX FIRST\n## Findings\n- [blocker] a.ts:1 - boom - fix it\n- [nit] b.ts:2 - meh - tidy\n## Evidence\nran the tests"}}],"usage":{"input_tokens":5,"output_tokens":50,"cache_read_input_tokens":100000,"cache_creation_input_tokens":0}}}
 FIX
   # A /clear leaves this: a real transcript, newer, with no billed turns. The
@@ -180,6 +188,14 @@ FIX
   # tokens, not 200. A resumed session copies prior turns into the new file, so
   # without this every long session double counts its own history.
   printf '%s' "$OUT" | grep -q 'main .*  *100 ' || fail "main output should be 100 (dedupe on requestId)"
+  # THE 0.4.2 DEFECTS, ASSERTED TOGETHER. Three worker turns: w1 is a single row
+  # (50 output), the id-less row stands alone (25), and w2 spans two rows — a
+  # thinking block carrying 4, then the tool_use carrying the real 50 — which
+  # must merge to its LAST value. So: 3 turns, 125 output tokens.
+  #   Keeping w2's FIRST row instead reads 79, which is what 0.4.1 did.
+  #   Merging the id-less row into another would read 2 turns.
+  printf '%s' "$OUT" | grep -qE 'worker +opus +3 +125 ' \
+    || fail "split requests must report their LAST usage; an id-less row stands alone"
   printf '%s' "$OUT" | grep -q 'critic'      || fail "worker run not joined to its role via agent_id"
   printf '%s' "$OUT" | grep -q 'T7'          || fail "task id not joined"
   printf '%s' "$OUT" | grep -q 'fix_first'   || fail "verdict not read from SubagentHandback"
@@ -198,7 +214,7 @@ FIX
 
   AFTER=$(find "$T" -type f | sort | while read -r f; do printf '%s %s\n' "$f" "$(wc -c <"$f")"; done)
   [ "$BEFORE" = "$AFTER" ] || fail "the reader modified its input tree"
-  printf 'self-test OK — dedupe, join, verdict, /clear skip, no content leak, inputs untouched\n'
+  printf 'self-test OK — dedupe (split + id-less rows), join, verdict, /clear skip, no content leak, inputs untouched\n'
   exit 0
 fi
 
@@ -272,9 +288,32 @@ if [ -f "$EVLOG" ]; then
 fi
 
 # --- price -------------------------------------------------------------------
-# Dedupe on requestId here, once, for every lane.
+# Dedupe on requestId here, once, for every lane — KEEPING THE LAST ROW, not the
+# first.
+#
+# ONE API REQUEST WRITES SEVERAL TRANSCRIPT ROWS: a thinking block, then one per
+# tool_use, each carrying a partial `usage`. Only the last holds the complete
+# `output_tokens`. 0.4.1 kept the first and so read the thinking block's count —
+# on a real 18-run session that was 30,557 sonnet worker output tokens against a
+# true 310,356, and 26,022 opus against 150,489. Output is the priciest token
+# class, so the undercount tilted every share toward the chair and away from
+# opus: 40/26/34 reported where the truth was 45/27/28.
+#
+# It survived 002's review because the main thread does not split the same way.
+# The fable line matched the client's own /usage to within 1% either way, and
+# that was the lane that got checked.
+#
+# First-seen POSITION is preserved and last-seen VALUES win, because the
+# "past turn 30" lever below indexes on row order within a run. A row with no
+# requestId (the `.uuid` fallback returned nothing) gets a key of its own and is
+# never merged with another.
 : > "$TMP/priced"
-awk -F'\t' '!($3 != "" && seen[$3]++)' "$TMP/rows" | while IFS=$'\t' read -r lane run rid model i o cr cw; do
+awk -F'\t' '
+  { k = ($3 != "" && $3 != "-" ? $3 : "\001" NR)
+    if (!(k in pos)) pos[k] = ++n
+    row[k] = $0 }
+  END { for (k in row) printf "%09d\t%s\n", pos[k], row[k] }
+' "$TMP/rows" | sort -n | cut -f2- | while IFS=$'\t' read -r lane run rid model i o cr cw; do
   set -- $(rates_for "$model")
   cost=$(awk -v i="$i" -v o="$o" -v cr="$cr" -v cw="$cw" \
              -v a="$1" -v b="$2" -v c="$3" -v d="$4" \
