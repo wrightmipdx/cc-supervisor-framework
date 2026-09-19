@@ -37,6 +37,12 @@ Every event also carries `event`, `ts`, `session` and `origin`.
 **Sizes, counts and verdicts only.** Never a brief, never a report, never a
 diff. `test-metrics.sh` asserts that no brief or report text reaches the log.
 
+**Test runs never touch it.** The hook suites point `METRICS_DIR` at a temp
+directory and assert they left the repo's log byte-for-byte as they found it. If
+you see a `session-test.jsonl` in your `.metrics/`, it is residue from a version
+before 0.3.2 and is safe to delete — as is any `session-nosession.jsonl`, which
+comes from running a hook by hand with no session id.
+
 ### `origin`, and why some events refuse to name an agent
 
 Hooks fire inside subagents as well as the main session. An earlier edit-budget

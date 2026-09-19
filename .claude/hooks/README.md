@@ -24,6 +24,12 @@ Every hook sources what it needs and exits 0 if the source fails.
 Supervisor never writes a metric: bookkeeping in the chair's context costs
 chair tokens, which is the thing being measured.
 
+**A test run is not a session.** Every suite that invokes a hook points
+`METRICS_DIR` at a temp directory, so running the tests never appends fixture
+events to the repo's real log. `install.sh` runs `install-check.sh`, which runs
+the suites, so without that isolation installing the framework wrote about a
+hundred fake events straight into the consumer's live data.
+
 **Sizes, counts and verdicts only.** Never a brief, never a report, never a
 diff. A test asserts that no brief or report text reaches the log.
 

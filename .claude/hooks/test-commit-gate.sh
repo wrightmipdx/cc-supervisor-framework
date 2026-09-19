@@ -9,6 +9,23 @@ set -uo pipefail
 cd "$(dirname "$0")/../.." || exit 1
 HOOK=.claude/hooks/30-commit-gate.sh
 
+# The gate writes to the event log, and a test run is not a session. Without
+# this, every invocation appends fixture events to the REPO'S OWN .metrics/ —
+# and install.sh runs install-check, which runs this suite, so installing the
+# framework used to dump about a hundred fake gate_block and commit_attempt
+# events straight into the consumer's live log.
+METRICS_TMP="$(mktemp -d)"
+METRICS_DIR="$METRICS_TMP/metrics"
+export METRICS_DIR
+trap 'rm -rf "$METRICS_TMP"' EXIT
+
+# Fingerprint of the repo's own log before the run. The check below compares
+# against this rather than asserting absence, because a consumer upgrading from
+# a version that HAD this bug still has the stale file, and failing their
+# install over history they cannot change would be its own defect.
+repo_log_state() { wc -c < .metrics/session-test.jsonl 2>/dev/null || printf 'absent'; }
+REPO_LOG_BEFORE="$(repo_log_state)"
+
 PASS=0; FAIL=0
 
 run() {
@@ -76,5 +93,16 @@ body
 EOF'
 
 echo
+# This run must leave the repo's own log exactly as it found it, and must have
+# logged somewhere — otherwise the isolation is untested rather than working.
+echo
+if [ "$(repo_log_state)" != "$REPO_LOG_BEFORE" ]; then
+  FAIL=$((FAIL+1)); printf 'FAIL %s\n' "the suite wrote fixture events into the repo's .metrics/"
+elif [ ! -s "$METRICS_DIR/session-test.jsonl" ]; then
+  FAIL=$((FAIL+1)); printf 'FAIL %s\n' "nothing was logged at all — isolation is untested"
+else
+  PASS=$((PASS+1)); printf 'ok   %s\n' "fixture events went to the temp log, not the repo's"
+fi
+
 printf '\n%d passed, %d failed\n' "$PASS" "$FAIL"
 [ "$FAIL" -eq 0 ]
