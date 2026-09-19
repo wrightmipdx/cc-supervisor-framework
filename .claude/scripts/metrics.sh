@@ -37,9 +37,33 @@ if [ "${1:-}" = "--cost" ]; then
 fi
 
 LOG="${1:-}"
+# THE NEWEST LOG IS OFTEN THE WRONG ONE. Every `/clear` starts a new session,
+# which fires SessionStart and writes a log holding exactly one `session_start`
+# and nothing else. That log is newer than the session you actually worked in,
+# so a bare `ls -t | head -1` reports on an empty session and says "none
+# logged" about work that happened minutes earlier — a report that is not wrong,
+# just answering about the wrong session.
+#
+# So: newest log that recorded something BESIDES starting up. Skipped logs are
+# counted and named, because silently reading a different file than the obvious
+# one is its own way to mislead.
+SKIPPED=0
 if [ -z "$LOG" ]; then
   # shellcheck disable=SC2012
-  LOG=$(ls -t "$METRICS_DIR"/session-*.jsonl 2>/dev/null | head -1)
+  for CAND in $(ls -t "$METRICS_DIR"/session-*.jsonl 2>/dev/null); do
+    if [ "$(jq -r -c 'select(.event != "session_start") | .event' "$CAND" 2>/dev/null | head -1)" != "" ]; then
+      LOG="$CAND"; break
+    fi
+    SKIPPED=$((SKIPPED + 1))
+  done
+  # Every log is a bare start-up. Report on the newest rather than dying: an
+  # empty session is a fact about the session, and "nothing happened" is a
+  # legitimate answer when nothing did.
+  if [ -z "$LOG" ]; then
+    # shellcheck disable=SC2012
+    LOG=$(ls -t "$METRICS_DIR"/session-*.jsonl 2>/dev/null | head -1)
+    SKIPPED=0
+  fi
 fi
 [ -n "$LOG" ]  || die "no session log found in $METRICS_DIR — has a session run since the hooks were installed?"
 [ -f "$LOG" ]  || die "no such log: $LOG"
@@ -57,6 +81,11 @@ N_BLOCK=$(n_of gate_block)
 
 printf '## Session %s\n' "$(printf '%s' "$EV" | jq -r '.[0].session // "unknown"')"
 printf '   log: %s\n' "$LOG"
+if [ "${SKIPPED:-0}" -gt 0 ]; then
+  printf '   skipped %s newer log(s) holding only a session_start — a /clear writes\n' "$SKIPPED"
+  printf '   one of those per invocation, and reporting on it would say "none logged"\n'
+  printf '   about work that did happen. Name a log explicitly to override.\n'
+fi
 
 # --- observed span ----------------------------------------------------------
 # NOT a session duration. There is no session-end event: the Stop hook fires at

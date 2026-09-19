@@ -155,6 +155,15 @@ FIX
 {"type":"assistant","requestId":"w1","agentId":"abc123def456","message":{"model":"claude-opus-5","usage":{"input_tokens":5,"output_tokens":50,"cache_read_input_tokens":100000,"cache_creation_input_tokens":0}}}
 {"type":"assistant","requestId":"w2","agentId":"abc123def456","message":{"model":"claude-opus-5","content":[{"type":"tool_use","name":"SubagentHandback","input":{"message":"## Verdict: FIX FIRST\n## Findings\n- [blocker] a.ts:1 - boom - fix it\n- [nit] b.ts:2 - meh - tidy\n## Evidence\nran the tests"}}],"usage":{"input_tokens":5,"output_tokens":50,"cache_read_input_tokens":100000,"cache_creation_input_tokens":0}}}
 FIX
+  # A /clear leaves this: a real transcript, newer, with no billed turns. The
+  # reader must skip it — picking it reports "nothing happened" about a session
+  # where plenty did.
+  cat > "$T/tx/sess-2-cleared.jsonl" <<'FIX'
+{"type":"mode","mode":"normal","sessionId":"sess-2-cleared"}
+{"type":"file-history-snapshot","messageId":"x","snapshot":{"trackedFileBackups":{}}}
+FIX
+  touch "$T/tx/sess-2-cleared.jsonl"
+
   mkdir -p "$T/proj/.metrics"
   cat > "$T/proj/.metrics/session-sess-1.jsonl" <<'FIX'
 {"event":"dispatch","ts":"2026-09-19T01:00:00Z","session":"sess-1","origin":"main","agent":"critic","tier":"opus","task":"T7","brief_bytes":100}
@@ -178,9 +187,18 @@ FIX
   printf '%s' "$OUT" | grep -qi 'boom'       && fail "finding TEXT leaked into the report"
   printf '%s' "$OUT" | grep -q "$RATES_ASOF" || fail "rates date not printed"
 
+  # THE 0.4.1 DEFECT, ASSERTED DIRECTLY. With no session named, the reader must
+  # skip the newer /clear transcript and land on the one that billed something.
+  OUT2=$(CLAUDE_PROJECT_DIR="$T/proj" CLAUDE_TRANSCRIPT_DIR="$T/tx" METRICS_DIR="$T/proj/.metrics" \
+         "$0" 2>&1) || { printf '%s\n' "$OUT2"; die "self-test: default-session run exited non-zero"; }
+  printf '%s' "$OUT2" | grep -q 'session: sess-1' \
+    || { printf '%s\n' "$OUT2" >&2; fail "a /clear transcript was picked over the real session"; }
+  printf '%s' "$OUT2" | grep -q 'skipped 1 newer transcript' \
+    || { printf '%s\n' "$OUT2" >&2; fail "the skip was not reported"; }
+
   AFTER=$(find "$T" -type f | sort | while read -r f; do printf '%s %s\n' "$f" "$(wc -c <"$f")"; done)
   [ "$BEFORE" = "$AFTER" ] || fail "the reader modified its input tree"
-  printf 'self-test OK — dedupe, join, verdict, no content leak, inputs untouched\n'
+  printf 'self-test OK — dedupe, join, verdict, /clear skip, no content leak, inputs untouched\n'
   exit 0
 fi
 
@@ -190,11 +208,24 @@ fi
    Token cost is read from the local session transcript (docs/METRICS.md, route
    3). Nothing else in this report depends on it."
 
+# Same trap as metrics.sh, one layer down: a `/clear` leaves a transcript with
+# no assistant turns at all, and it is newer than the one you worked in. Pick
+# the newest transcript that actually billed something, and say how many were
+# skipped to get there.
+SKIPPED=0
 if [ -z "$SESSION" ]; then
   # shellcheck disable=SC2012
-  NEWEST=$(ls -t "$TRANSCRIPTS"/*.jsonl 2>/dev/null | head -1)
-  [ -n "$NEWEST" ] || unavailable "no session transcripts under $TRANSCRIPTS"
-  SESSION=$(basename "$NEWEST" .jsonl)
+  ALL=$(ls -t "$TRANSCRIPTS"/*.jsonl 2>/dev/null)
+  [ -n "$ALL" ] || unavailable "no session transcripts under $TRANSCRIPTS"
+  for CAND in $ALL; do
+    if [ "$(jq -r -c 'select(.type == "assistant" and (.message.usage != null)) | 1' "$CAND" 2>/dev/null | head -1)" = "1" ]; then
+      SESSION=$(basename "$CAND" .jsonl); break
+    fi
+    SKIPPED=$((SKIPPED + 1))
+  done
+  if [ -z "$SESSION" ]; then
+    SESSION=$(basename "$(printf '%s\n' "$ALL" | head -1)" .jsonl); SKIPPED=0
+  fi
 fi
 MAIN="$TRANSCRIPTS/$SESSION.jsonl"
 [ -f "$MAIN" ] || unavailable "no transcript for session $SESSION under $TRANSCRIPTS"
@@ -257,6 +288,8 @@ TURNS=$(wc -l < "$TMP/priced" | tr -d ' ')
 
 # --- report ------------------------------------------------------------------
 printf '   session: %s\n' "$SESSION"
+[ "${SKIPPED:-0}" -gt 0 ] && \
+  printf '   skipped %s newer transcript(s) with no billed turns (a /clear leaves one)\n' "$SKIPPED"
 printf '   transcript: %s\n' "$TRANSCRIPTS"
 printf '   list-price rates as of %s — dollars are an ESTIMATE; the shares carry the decision\n\n' "$RATES_ASOF"
 

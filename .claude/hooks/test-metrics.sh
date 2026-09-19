@@ -171,8 +171,34 @@ eq "in flight back to zero" 0 "$(cat "$LOGDIR/.inflight-phantom" 2>/dev/null)"
 # so a bare tail -1 reads whichever session sorts last, not the latest event.
 eq "subagent_stop source recorded" subagent_stop \
    "$(events | jq -r 'select(.event=="dispatch_end" and .session=="phantom") | .source' | tail -1)"
-eq "a duration is carried" 0 \
-   "$(events | jq -r 'select(.event=="dispatch_end" and .session=="phantom") | .duration_s' | tail -1)"
+# A PLAUSIBLE VALUE, NOT AN EXACT ONE. duration_s is wall-clock seconds, so
+# asserting 0 here only holds when the dispatch and the stop land inside the
+# same clock second. They usually do, and under install-check — slower, and
+# after four other suites — they crossed a boundary about one run in ten. A
+# flaky suite is worse than a missing one: it trains you to re-run until green.
+D=$(events | jq -r 'select(.event=="dispatch_end" and .session=="phantom") | .duration_s' | tail -1)
+case "$D" in
+  ''|*[!0-9]*) eq "a duration is carried (non-negative integer)" "an integer" "$D" ;;
+  *)           eq "a duration is carried (non-negative integer)" ok ok ;;
+esac
+
+# And that the number MEANS something, which presence alone does not show.
+METRICS_DIR="$LOGDIR" METRICS_SESSION=timed bash -c '
+  . "'"$PWD"'/.claude/hooks/lib/metrics.sh"
+  metrics_init timed; metrics_dispatch_push' 2>/dev/null
+sleep 1
+AGE=$(METRICS_DIR="$LOGDIR" METRICS_SESSION=timed bash -c '
+  . "'"$PWD"'/.claude/hooks/lib/metrics.sh"
+  metrics_init timed; metrics_dispatch_age' 2>/dev/null)
+[ "${AGE:-0}" -ge 1 ] 2>/dev/null \
+  && eq "and it measures real elapsed time" ok ok \
+  || eq "and it measures real elapsed time" ">=1" "$AGE"
+
+# An empty queue is 0, never a negative and never a guess.
+EMPTY=$(METRICS_DIR="$LOGDIR" METRICS_SESSION=timed bash -c '
+  . "'"$PWD"'/.claude/hooks/lib/metrics.sh"
+  metrics_init timed; metrics_dispatch_age' 2>/dev/null)
+eq "an exhausted queue reads 0" 0 "$EMPTY"
 
 # THE 0.3.3 DEFECT, ASSERTED AGAINST DIRECTLY. The decrement used to happen at
 # launch, so the counter returned to zero about a second after every dispatch
