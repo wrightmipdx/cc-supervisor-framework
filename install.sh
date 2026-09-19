@@ -334,10 +334,20 @@ if [ ! -e "$TARGET/scratch/.gitkeep" ]; then
   [ "$DRY" -eq 0 ] && { mkdir -p "$TARGET/scratch"; : > "$TARGET/scratch/.gitkeep"; }
   echo "  create    scratch/"
 fi
-if ! grep -qs 'scratch/\*' "$TARGET/.gitignore"; then
-  [ "$DRY" -eq 0 ] && printf '\n# Supervisor framework: shared Supervisor/worker workspace, never committed.\nscratch/*\n!scratch/.gitkeep\n' >> "$TARGET/.gitignore"
-  echo "  append    .gitignore"
-fi
+# Each block is guarded on ITS OWN marker. An earlier version guarded everything
+# on 'scratch/*', which every upgraded repo already has — so a second block
+# added later could never reach an existing consumer. That is how the metrics
+# directory would have been ignored in fresh installs only, and committed by
+# everybody else.
+ignore_once() {   # ignore_once <grep-pattern> <label> <printf-format>
+  grep -qs "$1" "$TARGET/.gitignore" && return 0
+  [ "$DRY" -eq 0 ] && printf "$3" >> "$TARGET/.gitignore"
+  echo "  append    .gitignore ($2)"
+}
+ignore_once 'scratch/\*' 'scratch' \
+  '\n# Supervisor framework: shared Supervisor/worker workspace, never committed.\nscratch/*\n!scratch/.gitkeep\n'
+ignore_once '^\.metrics/' 'metrics' \
+  '\n# Supervisor framework: hook-written session event log. See docs/METRICS.md.\n.metrics/\n'
 
 # --- CLAUDE.md ----------------------------------------------------------------
 echo

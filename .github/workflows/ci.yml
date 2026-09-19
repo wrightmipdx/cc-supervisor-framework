@@ -150,6 +150,50 @@ jobs:
           done
           echo ok
 
+      # The largest data-loss risk in 0.3.0: LEDGER and LESSONS stopped being kit
+      # files and became templates. A consumer's populated ledger must come
+      # through an upgrade untouched — and the hooks, which counted zero open
+      # items against exactly this format, must now read it.
+      - name: 0.2.2 -> HEAD leaves a populated ledger byte-identical, and readable
+        run: |
+          set -e
+          OLD=9280044   # last 0.2.2 release
+          OLDKIT="$RUNNER_TEMP/oldkit"; mkdir -p "$OLDKIT"
+          git archive "$OLD" | tar -x -C "$OLDKIT"
+          T="$RUNNER_TEMP/consumer"; mkdir -p "$T" && git -C "$T" init -q
+          "$OLDKIT/install.sh" "$T" --stack none >/dev/null
+
+          # The ID-prefixed form real plans write, and the one every hook used
+          # to count as zero.
+          printf -- '# Requirements Ledger\n\n- E1 [ ] application accepts manual data entry\n- E2 [x] verified thing\n- I4 [ ] UOM conversion by unit class\n' > "$T/docs/LEDGER.md"
+          BEFORE=$(sha256sum "$T/docs/LEDGER.md" | awk '{print $1}')
+
+          # Before: the hook is blind to it.
+          out=$(CLAUDE_PROJECT_DIR="$T" "$T/.claude/hooks/10-session-start.sh" </dev/null | jq -r '.hookSpecificOutput.additionalContext // ""')
+          echo "$out" | grep -q 'Open ledger' && { echo "0.2.2 was supposed to be blind here"; exit 1; }
+
+          ./install.sh "$T" --stack none
+
+          AFTER=$(sha256sum "$T/docs/LEDGER.md" | awk '{print $1}')
+          [ "$BEFORE" = "$AFTER" ] || { echo "the upgrade modified a populated ledger"; exit 1; }
+          test -s "$T/docs/LESSONS.md" || { echo "the upgrade emptied LESSONS.md"; exit 1; }
+
+          # After: it reads both items, and only the open ones.
+          out=$(CLAUDE_PROJECT_DIR="$T" "$T/.claude/hooks/10-session-start.sh" </dev/null | jq -r '.hookSpecificOutput.additionalContext // ""')
+          echo "$out" | grep -q '2 open, 1 verified' || { echo "hook still blind to the ID form: $out"; exit 1; }
+          echo "$out" | grep -q 'E1' || { echo "open item not listed"; exit 1; }
+
+          # The new hooks are live, not parked in .new.
+          n=$(find "$T" -name '*.new' | wc -l)
+          [ "$n" -eq 0 ] || { echo "$n .new file(s) after a clean upgrade"; exit 1; }
+          test -x "$T/.claude/hooks/70-commit-landed.sh" || { echo "new hook did not land"; exit 1; }
+          test -f "$T/.claude/hooks/lib/ledger.sh" || { echo "hook library did not land"; exit 1; }
+
+          # I4: the metrics block is guarded on its own marker, so it reaches a
+          # consumer that already had scratch/* ignored.
+          grep -q '^\.metrics/' "$T/.gitignore" || { echo "metrics dir not ignored after upgrade"; exit 1; }
+          echo ok
+
       - name: A customized framework file is never overwritten
         run: |
           set -e
