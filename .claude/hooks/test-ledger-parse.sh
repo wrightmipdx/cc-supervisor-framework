@@ -104,5 +104,33 @@ echo "--- open items are returned whole and capped"
 eq "open_items: count" 3 "$(ledger_open_items "$TMP/docs/LEDGER-mixed.md" | wc -l | tr -d ' ')"
 eq "open_items: cap"   2 "$(ledger_open_items "$TMP/docs/LEDGER-mixed.md" 2 | wc -l | tr -d ' ')"
 
+echo
+echo "--- 005: ledger_items captures the id, and folds wrapped bullets"
+eq "items: id captured"    "E1" "$(ledger_items "$TMP/docs/LEDGER-ids.md" | sed -n '1p' | cut -f1)"
+eq "items: id absent"      "-"  "$(ledger_items "$TMP/docs/LEDGER-plain.md" | sed -n '1p' | cut -f1)"
+eq "items: state deferred" "deferred" "$(ledger_items "$TMP/docs/LEDGER-ids.md" | sed -n '4p' | cut -f2)"
+
+cat > "$TMP/docs/LEDGER-dates.md" <<'EOF'
+- [~] deferred with a date approved 2026-09-19
+- [~] deferred with no date at all
+- E5 [~] deferred with an id and a date 2026-09-20
+- [~] deferred whose date is on the
+  continuation line 2026-09-21 here
+EOF
+
+d1=$(ledger_items "$TMP/docs/LEDGER-dates.md" | sed -n '1p' | cut -f3)
+d2=$(ledger_items "$TMP/docs/LEDGER-dates.md" | sed -n '2p' | cut -f3)
+d3=$(ledger_items "$TMP/docs/LEDGER-dates.md" | sed -n '3p' | cut -f3)
+d4=$(ledger_items "$TMP/docs/LEDGER-dates.md" | sed -n '4p' | cut -f3)
+
+echo
+echo "--- 005: ledger_deferred_date reads the whole bullet, wrapped or not"
+eq "date: with a date"          "2026-09-19" "$(ledger_deferred_date "$d1")"
+eq "date: without a date"       ""           "$(ledger_deferred_date "$d2")"
+eq "date: with an id and date"  "2026-09-20" "$(ledger_deferred_date "$d3")"
+eq "date: on continuation line" "2026-09-21" "$(ledger_deferred_date "$d4")"
+eq "items: wrapped text folded" \
+   "deferred whose date is on the continuation line 2026-09-21 here" "$d4"
+
 printf '\n%d passed, %d failed\n' "$PASS" "$FAIL"
 [ "$FAIL" -eq 0 ]

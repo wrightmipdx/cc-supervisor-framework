@@ -73,3 +73,61 @@ EOF
 # the parser has drifted from the format the repo actually writes, which is
 # exactly the failure this library was written to end.
 ledger_count_looks_like() { _ledger_count '^[[:space:]]*-[[:space:]].*\[[ x~]\]' "$1"; }
+
+# --- 005: id capture and whole-bullet reads, for trace.sh -----------------
+#
+# The regexes above MATCH an ID prefix but never CAPTURE it, and every
+# consumer only ever counts. trace.sh needs the id itself, plus the [~]
+# approval date, which is free prose inside the bullet body and can sit on a
+# wrapped continuation line the anchored regexes never see. Both are new
+# functions; no existing regex or function above this point is touched.
+
+# One TSV row per requirement bullet: id <TAB> state <TAB> text
+#   id    the ID prefix (E1, I10, X3...) or "-" when the bullet has none —
+#         real ledgers carry both forms in the wild (004's two deferrals)
+#   state open | done | deferred
+#   text  the WHOLE bullet, continuation lines folded in with a single space,
+#         so a [~] date written on a wrapped line is still visible
+ledger_items() {  # ledger_items <file>
+  local file="$1" line id state text in_item=0 flush
+  while IFS= read -r line || [ -n "$line" ]; do
+    if printf '%s\n' "$line" | grep -qE "$LEDGER_RE_ANY"; then
+      if [ "$in_item" -eq 1 ]; then
+        printf '%s\t%s\t%s\n' "${id:--}" "$state" "$text"
+      fi
+      in_item=1
+      id=$(printf '%s\n' "$line" \
+           | sed -E 's/^[[:space:]]*-[[:space:]]+([A-Za-z]+[0-9]+)[[:space:]]+\[[ x~]\].*/\1/')
+      [ "$id" = "$line" ] && id=""
+      case "$line" in
+        *'[x]'*) state=done ;;
+        *'[~]'*) state=deferred ;;
+        *)       state=open ;;
+      esac
+      text=$(printf '%s\n' "$line" \
+             | sed -E 's/^[[:space:]]*-[[:space:]]+([A-Za-z]+[0-9]+[[:space:]]+)?\[[ x~]\][[:space:]]*//')
+    elif [ "$in_item" -eq 1 ]; then
+      case "$line" in
+        '')           flush=1 ;;
+        [[:space:]]*) text="$text $(printf '%s' "$line" | sed -E 's/^[[:space:]]+//')" ;;
+        *)            flush=1 ;;
+      esac
+      if [ "${flush:-0}" -eq 1 ]; then
+        printf '%s\t%s\t%s\n' "${id:--}" "$state" "$text"
+        in_item=0; flush=0
+      fi
+    fi
+  done < "$file"
+  if [ "$in_item" -eq 1 ]; then
+    printf '%s\t%s\t%s\n' "${id:--}" "$state" "$text"
+  fi
+}
+
+# The approval date on a deferred bullet's own text — anywhere in it, not just
+# the first line, since ledger_items already folded continuation lines in.
+# Empty when the bullet carries no ISO date, which trace.sh reports as an
+# unapproved deferral (AC-2) rather than silently treating it as approved.
+LEDGER_RE_DATE='(19|20)[0-9]{2}-[0-9]{2}-[0-9]{2}'
+ledger_deferred_date() {  # ledger_deferred_date <bullet-text>
+  printf '%s\n' "$1" | grep -oE "$LEDGER_RE_DATE" | head -1
+}
