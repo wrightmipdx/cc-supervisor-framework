@@ -194,6 +194,41 @@ jobs:
           grep -q '^\.metrics/' "$T/.gitignore" || { echo "metrics dir not ignored after upgrade"; exit 1; }
           echo ok
 
+      # install.sh plans from hashes and never from versions, so an older kit run
+      # against a newer install looks exactly like an ordinary upgrade while it
+      # reverts everything and deletes what the older release does not ship.
+      - name: A downgrade is refused, not performed
+        run: |
+          set -e
+          T="$RUNNER_TEMP/newer"
+          mkdir -p "$T" && git -C "$T" init -q
+          ./install.sh "$T" --stack none >/dev/null
+
+          # Pretend the target is on a future release. This is what a stale
+          # checkout sees, without needing a second kit to reproduce it.
+          sed -i 's/^version .*/version 9.9.9/' "$T/.claude/.framework-manifest"
+          before=$(find "$T/.claude" -type f | wc -l)
+
+          if ./install.sh "$T" --stack none >/dev/null 2>&1; then
+            echo "the installer performed a downgrade instead of refusing"; exit 1
+          fi
+          after=$(find "$T/.claude" -type f | wc -l)
+          [ "$before" = "$after" ] || { echo "files changed despite the refusal"; exit 1; }
+          grep -q '^version 9.9.9' "$T/.claude/.framework-manifest" \
+            || { echo "the manifest was rewritten despite the refusal"; exit 1; }
+
+          # --dry-run must still work: seeing the plan is how you find out you
+          # are on the wrong branch.
+          ./install.sh "$T" --stack none --dry-run >/dev/null \
+            || { echo "--dry-run was refused too"; exit 1; }
+
+          # --force is the documented escape hatch.
+          ./install.sh "$T" --stack none --force >/dev/null \
+            || { echo "--force did not override the refusal"; exit 1; }
+          grep -q '^version 9.9.9' "$T/.claude/.framework-manifest" \
+            && { echo "--force did not actually downgrade"; exit 1; }
+          echo ok
+
       - name: A customized framework file is never overwritten
         run: |
           set -e

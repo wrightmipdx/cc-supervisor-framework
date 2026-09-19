@@ -26,6 +26,12 @@
 #           CLAUDE.md so future upgrades replace it cleanly.
 # --force   Overwrite locally modified framework files too.
 # --dry-run Print the plan. Write nothing.
+#
+# DOWNGRADES are refused. If the target already has a NEWER framework than this
+# kit, the install stops with exit 5 and writes nothing: going backwards deletes
+# the files this release no longer ships. --force overrides, --dry-run still
+# shows the plan. The check can only fire when the KIT is new enough to have it,
+# so a pre-0.3.1 checkout still downgrades silently -- use --dry-run.
 
 set -uo pipefail
 
@@ -44,7 +50,10 @@ while [ $# -gt 0 ]; do
     --dry-run) DRY=1; shift ;;
     --adopt) ADOPT=1; shift ;;
     --force) FORCE=1; shift ;;
-    -h|--help) sed -n '2,32p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    # Print the header block, stopping at the first line that is not a comment.
+    # A fixed line range drifts the moment the header grows, and then --help
+    # starts printing code.
+    -h|--help) awk 'NR==1{next} /^#/{sub(/^# ?/,""); print; next} {exit}' "$0"; exit 0 ;;
     -*) echo "unknown flag: $1" >&2; exit 2 ;;
     *) TARGET="$1"; shift ;;
   esac
@@ -100,6 +109,54 @@ MSG
   exit 3
 fi
 [ "$MODE" = adopt ] && MODE=upgrade-adopt
+
+# --- downgrade guard ----------------------------------------------------------
+# This installer plans from file HASHES and never from versions, so running an
+# older kit against a newer install is indistinguishable from an ordinary
+# upgrade. It reverts every changed file -- they match the manifest, so they
+# count as unmodified -- and DELETES everything the older release does not ship.
+# No warning, no .new, and the only tell is a 'remove' block in a plan that
+# otherwise looks routine.
+#
+# KNOWN LIMIT, stated because it decides how much this is worth: the check lives
+# in the kit, so it fires only when the kit you run is new enough to have it. A
+# checkout from before this guard shipped still downgrades silently. --dry-run
+# is the defence there.
+#
+# --dry-run is deliberately allowed through: seeing the plan is how you find out
+# you are on the wrong branch.
+version_num() {
+  # Leading '1' so the result never starts with a zero -- bash reads 0003000 as
+  # octal in a numeric test, which would make 0.3.0 compare as smaller than
+  # 0.2.2.
+  printf '%s' "${1:-0}" | awk -F. '{printf "1%03d%03d%03d", $1+0, $2+0, $3+0}'
+}
+INSTALLED_VERSION="$(manifest_field version)"
+if [ "$MODE" = upgrade ] && [ "$FORCE" -eq 0 ] && [ "$DRY" -eq 0 ] \
+   && [ -n "$INSTALLED_VERSION" ] && [ "$INSTALLED_VERSION" != unknown ] \
+   && [ "$VERSION" != unknown ] \
+   && [ "$(version_num "$INSTALLED_VERSION")" -gt "$(version_num "$VERSION")" ]; then
+  cat >&2 <<MSG
+This target has a NEWER framework than this kit:
+
+  installed here:  $INSTALLED_VERSION   ($TARGET)
+  this kit:        $VERSION   ($KIT)
+
+Going backwards is not an upgrade in reverse. Files this release no longer ships
+would be DELETED, not left alone, and everything else would be reverted -- the
+installer plans from hashes, so your $INSTALLED_VERSION files look untouched to
+it and it overwrites them without offering a .new.
+
+You are most likely running install.sh from a stale checkout or an old clone.
+Check with 'git -C "$KIT" status' before anything else.
+
+Nothing has been written. If the downgrade is genuinely what you want:
+
+  ./install.sh "$TARGET" --dry-run   # see exactly what it would remove
+  ./install.sh "$TARGET" --force     # then do it
+MSG
+  exit 5
+fi
 
 # A renamed fork is invisible to the CLAUDE.md migration below, which keys on a
 # literal '# SUPERVISOR'. Without this guard the fork's constitution survives and
