@@ -188,8 +188,11 @@ cat <<DEPROBE
     jq -r 'select(.event=="dispatch_end") | .source' .metrics/session-*.jsonl | sort | uniq -c
 
   post_tool_use is the better source: its payload carries the report, which is
-  where the verdict and findings counts come from. subagent_stop usually
-  records completion only. NEITHER appearing means this version fires neither —
+  where the verdict and findings counts come from. subagent_stop records
+  completion only — and MEASURED on at least one version, it also fires when
+  nothing was dispatched at all. A SubagentStop with no worker in flight is
+  therefore dropped rather than logged as a phantom report; without that, the
+  "reports missing an Evidence section, target 0" line fills with noise. NEITHER appearing means this version fires neither —
   metrics.sh then reports the dispatch-to-report ratio and the opus value report
   as unavailable rather than computing them from a missing event, and every
   event after the first dispatch is attributed 'ambiguous'. Record what you see

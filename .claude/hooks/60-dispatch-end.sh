@@ -67,6 +67,19 @@ if [ -n "$REPORT" ]; then
   NITS=$(printf '%s' "$REPORT"      | grep -c '^[[:space:]]*-[[:space:]]*\[nit\]'        || true)
 fi
 
+# ATTRIBUTE OR DO NOT LOG. Measured on this version: SubagentStop fires even
+# when nothing was dispatched — four times in a session with zero Agent calls,
+# each carrying no agent and no report. Logged blindly, those become phantom
+# reports, and "reports missing an Evidence section, target 0" turns into noise
+# at exactly the moment it is supposed to mean something.
+#
+# A SubagentStop with no worker in flight did not end a dispatch, whatever the
+# harness calls it. PostToolUse is trusted on its own because it carries the
+# subagent_type: it is answering about a specific Agent call.
+if [ "$SOURCE" = subagent_stop ] && [ "$(metrics_inflight)" -eq 0 ]; then
+  exit 0
+fi
+
 # One worker fewer in flight. Do this before logging so the origin of any later
 # event is judged against the corrected count.
 metrics_inflight_dec

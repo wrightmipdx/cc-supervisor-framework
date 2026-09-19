@@ -92,6 +92,15 @@ therefore cannot double count. `install-check.sh --probe` prints the one-line
 If neither fires, `metrics.sh` reports the ratio and the value report as
 UNAVAILABLE rather than computing them from a missing event.
 
+**Measured 2026-09-18:** this Claude Code version fires `SubagentStop` even when
+nothing was dispatched — four times in a session with zero Agent calls, each
+carrying no agent and no report. A `SubagentStop` with no worker in flight is
+therefore dropped, not logged: it did not end a dispatch, whatever the harness
+calls it. `PostToolUse` is trusted on its own because it names the
+`subagent_type`, so it is answering about a specific Agent call. This is the
+"attribute or do not log" rule applied to the harness itself, and without it the
+target-zero Evidence line fills with phantoms.
+
 ### There is no `session_end`
 
 `Stop` fires at the end of **every** assistant turn, not at the end of a

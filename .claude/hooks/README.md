@@ -48,6 +48,10 @@ source does not fire in your version, the in-flight count never returns to zero
 and everything after the first dispatch reads `ambiguous` — degraded, and
 honestly so.
 
+A `SubagentStop` that arrives with no worker in flight is dropped. This version
+fires that event even when nothing was dispatched, and a phantom report poisons
+the one metric with a target attached to it.
+
 `60-dispatch-end.sh` is wired to two events on purpose. Which one a given Claude
 Code version fires cannot be checked from a script, and `docs/INTENT.md` forbids
 depending on a feature that cannot be verified at install time. Each event

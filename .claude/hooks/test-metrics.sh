@@ -145,12 +145,27 @@ hook 60-dispatch-end.sh "$P" >/dev/null
 eq "a clean review reads as ship" ship \
    "$(events | jq -r 'select(.event=="dispatch_end") | .verdict' | tail -1)"
 
-# SubagentStop usually carries no report. It must still record completion.
-hook 60-dispatch-end.sh '{"session_id":"testsess","hook_event_name":"SubagentStop"}' >/dev/null
+# SubagentStop fires on this version even when nothing was dispatched. With no
+# worker in flight it did not end a dispatch, and a phantom report would poison
+# the "missing an Evidence section, target 0" line.
+# A SEPARATE session, because the one above still has a worker outstanding —
+# three dispatched, two returned — and that worker is a real reason to log.
+P2='{"session_id":"phantom"'
+BEFORE=$(ev_count dispatch_end)
+hook 60-dispatch-end.sh "$P2,\"hook_event_name\":\"SubagentStop\"}" >/dev/null
+eq "a SubagentStop with nothing in flight is not logged" "$BEFORE" "$(ev_count dispatch_end)"
+
+# With a worker outstanding it is a real completion, and must be recorded even
+# though it carries no report.
+hook 20-pre-delegate.sh "$P2,\"tool_input\":{\"subagent_type\":\"builder\",\"prompt\":\"T9 — go\"}}" >/dev/null
+hook 60-dispatch-end.sh "$P2,\"hook_event_name\":\"SubagentStop\"}" >/dev/null
+eq "with a worker in flight it is" "$((BEFORE + 1))" "$(ev_count dispatch_end)"
+# Scoped to the phantom session: events() concatenates every log in glob order,
+# so a bare tail -1 reads whichever session sorts last, not the latest event.
 eq "subagent_stop source recorded" subagent_stop \
-   "$(events | jq -r 'select(.event=="dispatch_end") | .source' | tail -1)"
+   "$(events | jq -r 'select(.event=="dispatch_end" and .session=="phantom") | .source' | tail -1)"
 eq "no report means no verdict" none \
-   "$(events | jq -r 'select(.event=="dispatch_end") | .verdict' | tail -1)"
+   "$(events | jq -r 'select(.event=="dispatch_end" and .session=="phantom") | .verdict' | tail -1)"
 
 echo
 echo "--- commit_landed records only what actually landed"
