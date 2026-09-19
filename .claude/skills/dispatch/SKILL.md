@@ -89,8 +89,12 @@ Budget **one** resume per dispatch. A worker that lands the plane and reports
 partial work can be resumed once to finish it.
 
 A second resume means the brief was too large, not that the worker was slow.
-Split it and re-dispatch as two briefs. The dispatch-to-report ratio in
-`metrics.sh` is where this shows up across a session.
+Split it and re-dispatch as two briefs.
+
+`metrics.sh` is where this shows up across a session, in two places: dispatches
+against completions, and a run's **turn count** next to its cost. A run that
+overran its agent's `maxTurns`, or that carried a large share of the session's
+"spend past turn 30", was a brief that should have been two.
 
 ## Report triage
 

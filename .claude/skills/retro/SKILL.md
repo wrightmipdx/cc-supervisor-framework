@@ -45,31 +45,54 @@ every future session.
   says how many it left behind; a file that always reports overflow has stopped
   being read.
 
-## 5. Cost check
-
-Run it, do not estimate it:
+## 5. Session report — run it, do not estimate it
 
 ```!
 .claude/scripts/metrics.sh
 ```
 
-The hooks wrote that log during the session; you wrote nothing. Read the two
-blocks that carry a decision:
+The hooks wrote the event log during the session and the transcript wrote
+itself; you wrote neither, and bookkeeping in the chair's context costs chair
+tokens, which is the thing being measured.
 
-- **Opus value.** Every opus dispatch with its verdict and blocker count. A
-  `critic` that returned SHIP with no blockers on a routine close is a
-  downgrade candidate for next time. One that returned BLOCK paid for its 5x.
-  The ~25% ceiling in `CLAUDE.md` is a goal, not a gate — judge the spend
-  against what it bought, and say which way you land.
-- **Dispatch-to-report ratio.** A worker sent more often than it returned was
-  resumed. One resume is budgeted; a second means the brief was too large.
+Read the four blocks that carry a decision, and **say which way you land on each
+one**. A number nobody judged is a number nobody will act on.
 
-Add by hand what the log cannot see: any task where you typed a long
-implementation instead of briefing it.
+**1. Opus share of cost.** `CLAUDE.md` prime rule 2 governs the combined opus
+share — Supervisor **plus** `architect` **plus** `critic`. The ~25% figure is a
+goal, not a gate. Judge it against what the spend bought, which the last block
+shows you directly.
 
-Token cost per tier is NOT IMPLEMENTED — `metrics.sh --cost` says why, and
-`docs/METRICS.md` holds the three routes and what each needs verified first. Do
-not estimate a split. A guessed number in a governance loop is worse than no
-number.
+**2. Worker spend past turn 30.** The largest lever the instrument has found,
+and the one nothing else in the framework watches. A worker's context grows
+through its run and every turn re-reads all of it, so late turns cost multiples
+of early ones. A high number is an argument for a **tighter brief or a lower
+`maxTurns`**, not for a cheaper model — a cheap model taking 90 turns is not a
+saving. If a run overran its agent's `maxTurns`, say so: that is a brief that
+was too large, and it is a lesson.
+
+**3. What each run cost, next to what it returned.** This is the pairing the
+framework exists to make. A `critic` that returned SHIP with no blockers on a
+routine close is a **downgrade candidate** for next time. One that returned
+BLOCK or FIX FIRST paid for its 5x, and you should say so out loud so the lane
+does not get cut on cost alone. A run showing `no-handback` never reported: find
+out whether it was resumed or lost.
+
+**4. Chair share.** Main thread as a fraction of billable tokens. This is
+`ROUTING.md`'s central claim under test — that the saving comes from context
+isolation rather than from tiering. A chair share climbing session over session
+means work is being done in the chair that should have been briefed out.
+
+Add by hand the one thing the report cannot see: **any task where you typed a
+long implementation instead of briefing it.**
+
+Dollars are an estimate from a list-price table dated in the report's header.
+Subscription accounting is not list price, so the **shares** are what carry a
+decision, not the absolute figures. If that date is far behind you, the table
+needs re-checking before any tiering decision rests on it.
+
+`unjoined runs` in the report means the worker costs are real but their roles
+are unknown — a log written before 0.4.0, or a version that stopped printing
+`agentId` in the launch receipt. Do not guess which run was which.
 
 Anything the report surfaces becomes next session's first lesson.

@@ -119,53 +119,74 @@ eq "three dispatched, none finished" ambiguous \
    "$(events | jq -r 'select(.event=="commit_attempt") | .origin' | head -1)"
 
 echo
-echo "--- dispatch_end carries the value fields"
-REPORT='## Verdict: BLOCK
-## Findings
-- [blocker] a.sh:3 — wrong — fix it
-- [should-fix] b.sh:9 — slow — cache it
-- [nit] c.sh:1 — typo
-## Evidence
-ran the tests'
-P=$(jq -cn --arg r "$REPORT" '{session_id:"testsess", hook_event_name:"PostToolUse",
+echo "--- PostToolUse writes a launch, not a report"
+# Agents launch asynchronously: Task returns this receipt and PostToolUse fires
+# against it, seconds before the worker has done anything. Through 0.3.3 the
+# hook parsed a verdict out of it and got `none` 27 times out of 27 on real
+# sessions. The receipt's one real datum is the agentId, and that is what the
+# cost report joins on.
+RECEIPT='Async agent launched successfully. (This tool result is internal metadata.)
+agentId: a5596596b88ba7d9d (internal ID - do not mention to user.)'
+P=$(jq -cn --arg r "$RECEIPT" '{session_id:"testsess", hook_event_name:"PostToolUse",
       tool_input:{subagent_type:"critic"}, tool_response:$r}')
 hook 60-dispatch-end.sh "$P" >/dev/null
-eq "dispatch_end logged"  1       "$(ev_count dispatch_end)"
-eq "verdict parsed"       block   "$(events | jq -r 'select(.event=="dispatch_end") | .verdict' | head -1)"
-eq "blockers counted"     1       "$(events | jq -r 'select(.event=="dispatch_end") | .findings.blocker' | head -1)"
-eq "should-fix counted"   1       "$(events | jq -r 'select(.event=="dispatch_end") | .findings.should_fix' | head -1)"
-eq "evidence detected"    true    "$(events | jq -r 'select(.event=="dispatch_end") | .has_evidence' | head -1)"
-eq "source recorded"      post_tool_use "$(events | jq -r 'select(.event=="dispatch_end") | .source' | head -1)"
-eq "no report text stored" 0      "$(events | grep -c 'cache it' || true)"
+eq "dispatch_launched logged"  1 "$(ev_count dispatch_launched)"
+eq "agent recorded"      critic "$(events | jq -r 'select(.event=="dispatch_launched") | .agent' | head -1)"
+eq "agent_id extracted"  a5596596b88ba7d9d \
+   "$(events | jq -r 'select(.event=="dispatch_launched") | .agent_id' | head -1)"
+eq "PostToolUse writes no completion" 0 "$(ev_count dispatch_end)"
 
-P=$(jq -cn --arg r "## Verdict: SHIP
-No blockers." '{session_id:"testsess", hook_event_name:"PostToolUse",
-      tool_input:{subagent_type:"critic"}, tool_response:$r}')
+# The fields that could never be populated are gone. A field reporting a
+# confident zero it cannot fill is worse than a missing one.
+eq "no verdict field"       0 "$(events | grep -c '"verdict"' || true)"
+eq "no has_evidence field"  0 "$(events | grep -c 'has_evidence' || true)"
+eq "no findings field"      0 "$(events | grep -c '"findings"' || true)"
+
+# An id-less receipt still records the launch: the join degrades visibly to
+# "unjoined runs: N" in the report, never to a missing event.
+P=$(jq -cn '{session_id:"testsess", hook_event_name:"PostToolUse",
+      tool_input:{subagent_type:"builder"}, tool_response:"launched, no id here"}')
 hook 60-dispatch-end.sh "$P" >/dev/null
-eq "a clean review reads as ship" ship \
-   "$(events | jq -r 'select(.event=="dispatch_end") | .verdict' | tail -1)"
+eq "a receipt with no id still logs" 2 "$(ev_count dispatch_launched)"
+eq "and its agent_id is null" null \
+   "$(events | jq -r 'select(.event=="dispatch_launched") | .agent_id' | tail -1)"
+eq "no receipt text stored" 0 "$(events | grep -c 'internal metadata' || true)"
 
-# SubagentStop fires on this version even when nothing was dispatched. With no
-# worker in flight it did not end a dispatch, and a phantom report would poison
-# the "missing an Evidence section, target 0" line.
-# A SEPARATE session, because the one above still has a worker outstanding —
-# three dispatched, two returned — and that worker is a real reason to log.
+echo
+echo "--- SubagentStop is the completion, and the only decrementer"
+# Kept verbatim from 0.3.2: SubagentStop fires on this version even when nothing
+# was dispatched. With no worker in flight it did not end a dispatch.
+# A SEPARATE session, because the one above still has workers outstanding.
 P2='{"session_id":"phantom"'
 BEFORE=$(ev_count dispatch_end)
 hook 60-dispatch-end.sh "$P2,\"hook_event_name\":\"SubagentStop\"}" >/dev/null
 eq "a SubagentStop with nothing in flight is not logged" "$BEFORE" "$(ev_count dispatch_end)"
 
-# With a worker outstanding it is a real completion, and must be recorded even
-# though it carries no report.
 hook 20-pre-delegate.sh "$P2,\"tool_input\":{\"subagent_type\":\"builder\",\"prompt\":\"T9 — go\"}}" >/dev/null
+eq "in flight after dispatch" 1 "$(cat "$LOGDIR/.inflight-phantom" 2>/dev/null)"
 hook 60-dispatch-end.sh "$P2,\"hook_event_name\":\"SubagentStop\"}" >/dev/null
-eq "with a worker in flight it is" "$((BEFORE + 1))" "$(ev_count dispatch_end)"
+eq "with a worker in flight it is logged" "$((BEFORE + 1))" "$(ev_count dispatch_end)"
+eq "in flight back to zero" 0 "$(cat "$LOGDIR/.inflight-phantom" 2>/dev/null)"
 # Scoped to the phantom session: events() concatenates every log in glob order,
 # so a bare tail -1 reads whichever session sorts last, not the latest event.
 eq "subagent_stop source recorded" subagent_stop \
    "$(events | jq -r 'select(.event=="dispatch_end" and .session=="phantom") | .source' | tail -1)"
-eq "no report means no verdict" none \
-   "$(events | jq -r 'select(.event=="dispatch_end" and .session=="phantom") | .verdict' | tail -1)"
+eq "a duration is carried" 0 \
+   "$(events | jq -r 'select(.event=="dispatch_end" and .session=="phantom") | .duration_s' | tail -1)"
+
+# THE 0.3.3 DEFECT, ASSERTED AGAINST DIRECTLY. The decrement used to happen at
+# launch, so the counter returned to zero about a second after every dispatch
+# while every worker was still running: `ambiguous` fired zero times in 111 real
+# events. Two dispatched, one launched, and the count must still read 2.
+P3='{"session_id":"twoflight"'
+hook 20-pre-delegate.sh "$P3,\"tool_input\":{\"subagent_type\":\"builder\",\"prompt\":\"T1\"}}" >/dev/null
+hook 20-pre-delegate.sh "$P3,\"tool_input\":{\"subagent_type\":\"builder\",\"prompt\":\"T2\"}}" >/dev/null
+hook 60-dispatch-end.sh "$P3,\"hook_event_name\":\"PostToolUse\",\"tool_input\":{\"subagent_type\":\"builder\"},\"tool_response\":\"agentId: abcdef0123456789\"}" >/dev/null
+eq "a launch does not decrement" 2 "$(cat "$LOGDIR/.inflight-twoflight" 2>/dev/null)"
+hook 60-dispatch-end.sh "$P3,\"hook_event_name\":\"SubagentStop\"}" >/dev/null
+eq "one stop leaves one in flight" 1 "$(cat "$LOGDIR/.inflight-twoflight" 2>/dev/null)"
+hook 60-dispatch-end.sh "$P3,\"hook_event_name\":\"SubagentStop\"}" >/dev/null
+eq "two stops clear it" 0 "$(cat "$LOGDIR/.inflight-twoflight" 2>/dev/null)"
 
 echo
 echo "--- commit_landed records only what actually landed"

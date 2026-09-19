@@ -10,6 +10,7 @@ discipline alone does not survive.
 | `30-commit-gate.sh` | PreToolUse `Bash` | Blind staging; closing with open requirements |
 | `50-stop-retro.sh` | Stop | Ending a session without a retro |
 | `60-dispatch-end.sh` | SubagentStop, PostToolUse `Agent\|Task` | Nothing — it only measures |
+| | PostToolUse writes `dispatch_launched` (the `agent_id`); SubagentStop writes `dispatch_end` (real completion) | |
 | `70-commit-landed.sh` | PostToolUse `Bash` | Nothing — it only measures |
 
 Shared code lives in `lib/`: `ledger.sh` parses requirement checkboxes,
@@ -52,11 +53,20 @@ A `SubagentStop` that arrives with no worker in flight is dropped. This version
 fires that event even when nothing was dispatched, and a phantom report poisons
 the one metric with a target attached to it.
 
-`60-dispatch-end.sh` is wired to two events on purpose. Which one a given Claude
-Code version fires cannot be checked from a script, and `docs/INTENT.md` forbids
-depending on a feature that cannot be verified at install time. Each event
-records its `source`, and `metrics.sh` counts one source only, so wiring both
-can never double count.
+`60-dispatch-end.sh` is wired to two events, and since 0.4.0 they are **not
+alternatives** — they record different facts, and neither is a fallback for the
+other.
+
+Agents launch asynchronously: `Task` returns a receipt, so `PostToolUse` fires
+one to two seconds after the dispatch and never carries the worker's report. Its
+one real datum is the `agentId`, which is what lets the cost report say *which*
+opus rather than only how much. `SubagentStop` is the only event that means a
+worker actually stopped, so it alone writes the completion and alone decrements
+the in-flight count.
+
+Through 0.3.3 the decrement happened at launch, and the in-flight count was
+therefore zero the entire time workers were running — `origin` read `ambiguous`
+zero times in 111 real events. `docs/METRICS.md` has the measurement.
 
 ## Related
 

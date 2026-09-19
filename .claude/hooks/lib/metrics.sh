@@ -32,10 +32,20 @@ metrics_init() {   # metrics_init <session_id>
 _metrics_log()      { printf '%s/session-%s.jsonl' "$METRICS_DIR" "$METRICS_SESSION"; }
 _metrics_inflight() { printf '%s/.inflight-%s'     "$METRICS_DIR" "$METRICS_SESSION"; }
 _metrics_head()     { printf '%s/.head-%s'         "$METRICS_DIR" "$METRICS_SESSION"; }
+_metrics_queue()    { printf '%s/.dispatched-%s'   "$METRICS_DIR" "$METRICS_SESSION"; }
 
 # How many dispatched workers are believed to be running right now. This is the
 # only handle we have on attribution: a Bash call with none in flight is the
 # Supervisor's; with one or more in flight it could be anyone's.
+#
+# INCREMENTED AT DISPATCH, DECREMENTED AT SubagentStop — and the pairing is the
+# whole point. Through 0.3.3 the decrement happened on PostToolUse, which on
+# this Claude Code version fires about a second after the dispatch because
+# agents launch asynchronously. The count therefore returned to zero while every
+# worker was still running: across 111 logged events in sessions that ran eight
+# concurrent builders, `origin` was `ambiguous` exactly zero times and every
+# `.inflight-*` file on disk read 0. A safeguard that always answers `main` is
+# not a safeguard; it is a source of false confidence. See 60-dispatch-end.sh.
 metrics_inflight() {
   local n; n=$(cat "$(_metrics_inflight)" 2>/dev/null || printf 0)
   case "$n" in ''|*[!0-9]*) n=0 ;; esac
@@ -48,6 +58,33 @@ metrics_inflight_dec() {
   local n; n=$(metrics_inflight)
   if [ "$n" -gt 0 ]; then n=$((n - 1)); fi
   printf '%s' "$n" > "$(_metrics_inflight)" 2>/dev/null || true
+}
+
+# Dispatch start times, one epoch-seconds line each, oldest first. Only a
+# duration is derived from them; no identity is claimed.
+#
+# WORKERS FINISH OUT OF ORDER, so popping the oldest pairs a completion with the
+# longest-running dispatch rather than with its own. With one worker in flight
+# that is exact. With several it is a QUEUE AGE, not that worker's runtime, and
+# the report labels it as such. The exact per-worker figure is in the session
+# transcript, which is timestamped per turn and needs no guessing; this is the
+# cheap approximation available to a hook that knows nothing about who stopped.
+metrics_dispatch_push() {
+  date -u +%s >> "$(_metrics_queue)" 2>/dev/null || true
+}
+
+# Pops the oldest start time and prints the seconds since. Prints 0 when the
+# queue is empty or unreadable — never a negative, never a guess.
+metrics_dispatch_age() {
+  local q t now rest
+  q=$(_metrics_queue)
+  t=$(head -1 "$q" 2>/dev/null || printf '')
+  case "$t" in ''|*[!0-9]*) printf 0; return 0 ;; esac
+  rest=$(tail -n +2 "$q" 2>/dev/null || printf '')
+  printf '%s' "$rest" > "$q" 2>/dev/null || true
+  [ -n "$rest" ] && printf '\n' >> "$q" 2>/dev/null
+  now=$(date -u +%s 2>/dev/null) || { printf 0; return 0; }
+  if [ "$now" -ge "$t" ]; then printf '%s' "$((now - t))"; else printf 0; fi
 }
 
 # main       — provably the main session: either this event source does not fire

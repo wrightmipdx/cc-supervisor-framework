@@ -37,6 +37,8 @@ BRIEF=$(printf '%s' "$INPUT" | jq -r '(.tool_input.prompt // "") | length' 2>/de
 TASK=$(printf '%s' "$INPUT" | jq -r '.tool_input.prompt // ""' 2>/dev/null \
        | grep -oE '\bT[0-9]{1,3}\b' | head -1 || true)
 metrics_inflight_inc
+# Start time for this dispatch, popped by SubagentStop to give it a duration.
+metrics_dispatch_push
 METRICS_ORIGIN=main metrics_event dispatch "$(jq -cn \
   --arg agent "$AGENT" --arg tier "${TIER:-unknown}" --arg task "${TASK:-}" \
   --argjson bytes "${BRIEF:-0}" \

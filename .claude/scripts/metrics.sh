@@ -2,7 +2,7 @@
 # Read one session's event log and print what the retro and status skills need.
 #
 #   .claude/scripts/metrics.sh [log]     # newest session log if omitted
-#   .claude/scripts/metrics.sh --cost    # says why token cost is not here yet
+#   .claude/scripts/metrics.sh --cost    # the token cost block on its own
 #
 # UNLIKE A HOOK, THIS FAILS LOUDLY. A hook that breaks costs you a session; a
 # hook that fails open costs you nothing. This runs because a human asked it to,
@@ -26,18 +26,14 @@ die() { printf 'metrics: %s\n' "$1" >&2; exit 1; }
 command -v jq >/dev/null 2>&1 || die "jq is required"
 
 if [ "${1:-}" = "--cost" ]; then
-  cat >&2 <<'MSG'
-metrics: token cost per tier is NOT IMPLEMENTED, deliberately.
-
-  Three routes exist and each needs verifying before anything depends on it.
-  docs/METRICS.md states what each yields and what to check first. Guessing a
-  split would be worse than having none: a fabricated number in a governance
-  loop is how a budget rule stops meaning anything.
-
-  What IS countable today is in the report this script prints without --cost:
-  dispatches by tier, opus dispatches by agent, and what each one found.
-MSG
-  exit 2
+  # 0.3.3 and earlier printed a refusal here: three routes existed for token
+  # cost and none had been verified, and docs/METRICS.md held that a guessed
+  # split inside a governance loop is worse than no split at all.
+  #
+  # Route 3 — the local session transcript — was verified on 2026-09-19 and
+  # built. This now prints real numbers, and session-tokens.sh says UNAVAILABLE
+  # with a reason wherever it cannot.
+  exec "$(dirname "$0")/session-tokens.sh" "${2:-}"
 fi
 
 LOG="${1:-}"
@@ -82,71 +78,65 @@ else
     , "   total: \($d | length)   opus: \([$d[] | select(.tier == "opus")] | length)"'
 fi
 
-# --- reports ----------------------------------------------------------------
-printf '\n## Reports\n'
-if [ "$N_END" -eq 0 ]; then
-  printf '   UNAVAILABLE — no dispatch_end events in this log.\n'
-  printf '   This version fires neither SubagentStop nor PostToolUse on Agent, or no\n'
-  printf '   worker finished. Run .claude/install-check.sh --probe. The ratio and the\n'
-  printf '   value report below need this event and are not computed without it.\n'
+# --- completions ------------------------------------------------------------
+# 0.4.0 SPLIT THIS EVENT IN TWO, and dropped the fields it could never fill.
+#
+# Agents launch asynchronously: `Task` returns a receipt and PostToolUse fires
+# against it, so through 0.3.3 the "report" this block read was the brief echoed
+# back. Measured over 24 paired dispatches, report_bytes minus brief_bytes was
+# +353..+428 every time and the verdict came out `none` on 27 of 27 while the
+# transcripts showed critics returning FIX FIRST over real blockers.
+#
+# So verdict, findings and Evidence are no longer read here. They are read from
+# the session transcript by session-tokens.sh, below, where the handback lands —
+# next to what each run cost, which is the pairing that decides a tier.
+printf '\n## Completions\n'
+# A pre-0.4.0 log is recognisable and must not be read as if it were current:
+# its dispatch_end events were written at LAUNCH, so counting them as
+# completions overstates them and any duration read off them is meaningless.
+LEGACY=0
+if [ "$N_END" -gt 0 ] && \
+   [ "$(printf '%s' "$EV" | jq '[.[] | select(.event == "dispatch_end" and .duration_s != null)] | length')" -eq 0 ]; then
+  LEGACY=1
+fi
+if [ "$LEGACY" -eq 1 ]; then
+  printf '   UNAVAILABLE — this log predates 0.4.0. Its %s dispatch_end events were\n' "$N_END"
+  printf '   written when each worker LAUNCHED, not when it finished, and they carry\n'
+  printf '   no duration. They are not completions and are not counted as any.\n'
+  printf '   Token cost below is read from the transcript and is unaffected.\n'
+elif [ "$N_END" -eq 0 ]; then
+  if [ "$N_DISP" -eq 0 ]; then
+    printf '   none — nothing was dispatched\n'
+  else
+    printf '   UNAVAILABLE — %s dispatch(es) logged, no dispatch_end.\n' "$N_DISP"
+    printf '   This version fires no SubagentStop, or every worker is still running.\n'
+    printf '   Token cost below does not depend on this event.\n'
+  fi
 else
-  # Count ONE source. 60-dispatch-end.sh is wired to two events on purpose, and
-  # preferring the richer one is what stops that double counting.
-  SRC=$(printf '%s' "$EV" | jq -r '
-    [.[] | select(.event == "dispatch_end") | .source] as $s
-    | if ($s | index("post_tool_use")) then "post_tool_use"
-      elif ($s | index("subagent_stop")) then "subagent_stop"
-      else ($s[0] // "unknown") end')
-  printf '   source in use: %s\n' "$SRC"
-  printf '%s' "$EV" | jq -r --arg src "$SRC" '
-    [.[] | select(.event == "dispatch_end" and .source == $src)] as $e
-    | "   reports: \($e | length)"
-    , "   missing an Evidence section: \([$e[] | select(.has_evidence == false)] | length)   (target 0)"'
+  printf '%s' "$EV" | jq -r '
+    [.[] | select(.event == "dispatch_end")] as $e
+    | "   completed: \($e | length) of '"$N_DISP"' dispatched"
+    , (if ([$e[] | select(.duration_s != null)] | length) > 0 then
+        "   queue age at completion: min \([$e[].duration_s // 0] | min)s, max \([$e[].duration_s // 0] | max)s"
+       else empty end)'
+  printf '   Queue age, not a per-worker runtime: workers finish out of order and a\n'
+  printf '   hook cannot tell which one stopped. Per-run turn counts are below.\n'
+fi
 
-  printf '\n## Dispatch-to-report ratio — the resume signal\n'
-  printf '%s' "$EV" | jq -r --arg src "$SRC" '
-    ([.[] | select(.event == "dispatch")] | group_by(.agent)
-     | map({key: (.[0].agent // "unknown"), value: length}) | from_entries) as $sent
-    | ([.[] | select(.event == "dispatch_end" and .source == $src)] | group_by(.agent)
-     | map({key: (.[0].agent // "unknown"), value: length}) | from_entries) as $back
-    | $sent | to_entries[]
-    | "   \(.key): \(.value) sent, \($back[.key] // 0) returned"'
-  printf '   A worker sent more often than it returned was resumed. Budget one\n'
-  printf '   resume per dispatch; a second means the brief was too large.\n'
-
-  # --- the value report ----------------------------------------------------
-  printf '\n## Opus value — what the expensive lanes actually found\n'
-  printf '   The ~25%% opus ceiling is a goal, not a gate. Judge it here, against\n'
-  printf '   what the spend bought, not against the percentage alone.\n\n'
-  # Dispatches and their reports are paired by order within the opus lanes,
-  # which is what the log supports: a dispatch_end carries the agent but not the
-  # task id. Out-of-order completion of two concurrent opus workers would swap a
-  # pair of task labels and nothing else.
-  printf '%s' "$EV" | jq -r --arg src "$SRC" '
-    ([.[] | select(.event == "dispatch" and .tier == "opus")]) as $od
-    | ([.[] | select(.event == "dispatch_end" and .source == $src
-                     and (.agent == "critic" or .agent == "architect"))]) as $oe
-    | if ($od | length) == 0 then "   no opus dispatches this session"
-      else
-        [range(0; ($od | length))]
-        | map(. as $i | ($od[$i]) as $d | ($oe[$i] // null) as $r
-              | "   \($d.agent) \($d.task // "-"): "
-                + (if $r == null then "no report logged"
-                   else "verdict \($r.verdict), \($r.findings.blocker // 0) blocker(s), "
-                        + "\($r.findings.should_fix // 0) should-fix" end))
-        | .[]
-      end'
-  printf '%s' "$EV" | jq -r --arg src "$SRC" '
-    [.[] | select(.event == "dispatch_end" and .source == $src
-                  and (.agent == "critic" or .agent == "architect"))] as $oe
-    | if ($oe | length) == 0 then "   (no opus reports carrying a verdict)"
-      else
-        "   " + ((($oe | map(select(.agent == "critic" and .verdict == "ship"
-                                    and ((.findings.blocker // 0) == 0)))) | length) | tostring)
-        + " critic dispatch(es) returned SHIP with no blockers — downgrade candidates"
-        , "   " + ((($oe | map(select(.verdict == "block" or .verdict == "fix_first"))) | length) | tostring)
-        + " returned BLOCK or FIX FIRST — these paid for themselves"
-      end'
+# --- the join ---------------------------------------------------------------
+printf '\n## Dispatch join\n'
+N_LAUNCH=$(n_of dispatch_launched)
+if [ "$N_DISP" -eq 0 ]; then
+  printf '   no dispatches this session — every commit was direct-lane work\n'
+elif [ "$N_LAUNCH" -eq 0 ]; then
+  printf '   UNAVAILABLE — no dispatch_launched events. Worker costs below will\n'
+  printf '   report as unjoined: real numbers, unknown roles. Logs written before\n'
+  printf '   0.4.0 have none.\n'
+else
+  printf '%s' "$EV" | jq -r '
+    [.[] | select(.event == "dispatch_launched")] as $l
+    | "   launched: \($l | length), carrying an agent_id: \([$l[] | select(.agent_id != null)] | length)"'
+  printf '   agent_id is what lets the cost report say WHICH opus, not only how much.\n'
 fi
 
 # --- commits ----------------------------------------------------------------
@@ -198,5 +188,11 @@ else
   printf '   open now (this repo): %s\n' "$NOW"
 fi
 
-printf '\n## Token cost\n'
-printf '   NOT IMPLEMENTED — see docs/METRICS.md. Run with --cost for why.\n'
+printf '\n## Token cost — what this session actually spent\n'
+SESSION_ID=$(printf '%s' "$EV" | jq -r '.[0].session // ""')
+TOKENS="$(dirname "$0")/session-tokens.sh"
+if [ -x "$TOKENS" ]; then
+  "$TOKENS" "$SESSION_ID" || printf '   UNAVAILABLE — session-tokens.sh exited non-zero\n'
+else
+  printf '   UNAVAILABLE — %s is missing or not executable\n' "$TOKENS"
+fi

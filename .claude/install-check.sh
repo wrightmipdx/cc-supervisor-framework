@@ -53,6 +53,15 @@ for t in test-commit-gate test-ledger-parse test-lessons-parse test-metrics test
   if ".claude/hooks/$t.sh" >/dev/null 2>&1; then ok "$t passes"
   else bad "$t FAILS — run .claude/hooks/$t.sh"; fi
 done
+if [ -x .claude/scripts/session-tokens.sh ]; then
+  if .claude/scripts/session-tokens.sh --self-test >/dev/null 2>&1; then
+    ok "session-tokens self-test passes"
+  else
+    bad "session-tokens FAILS — run .claude/scripts/session-tokens.sh --self-test"
+  fi
+else
+  warn ".claude/scripts/session-tokens.sh is missing — metrics.sh will report token cost as unavailable"
+fi
 
 echo
 echo "== ledger parses"
@@ -174,30 +183,45 @@ if [ "$MODE" = static ]; then
   [ "$FAIL" -eq 0 ]; exit
 fi
 
-echo "== PROBE — the dispatch-end event source"
+echo "== PROBE — the dispatch events, and the transcript"
 DE=$(jq -r '.hooks | to_entries[] | .key as $k | .value[] | select(.hooks[].command | test("60-dispatch-end")) | $k' \
      .claude/settings.json 2>/dev/null | sort -u | tr '\n' ' ')
+TXDIR="$HOME/.claude/projects/$(pwd | sed 's|[/.]|-|g')"
 cat <<DEPROBE
   60-dispatch-end.sh is wired to: ${DE:-nothing}
-  Which of those your Claude Code version actually fires cannot be read from a
-  script. Both are wired and each event records its source; metrics.sh counts
-  one source only, so wiring both cannot double count.
 
-  After your next session that dispatches a worker, check:
+  AGENTS LAUNCH ASYNCHRONOUSLY on the version this was last measured against
+  (2026-09-19). Task returns a receipt — "Async agent launched successfully…
+  agentId: <id>" — and PostToolUse fires against that, one to two seconds after
+  the dispatch. It never carries the worker's report; the report arrives later
+  through SubagentHandback, which no hook sees.
 
-    jq -r 'select(.event=="dispatch_end") | .source' .metrics/session-*.jsonl | sort | uniq -c
+  So the two wirings record different facts and neither is a fallback for the
+  other:
 
-  post_tool_use is the better source: its payload carries the report, which is
-  where the verdict and findings counts come from. subagent_stop records
-  completion only — and MEASURED on at least one version, it also fires when
-  nothing was dispatched at all. A SubagentStop with no worker in flight is
-  therefore dropped rather than logged as a phantom report; without that, the
-  "reports missing an Evidence section, target 0" line fills with noise. NEITHER appearing means this version fires neither —
-  metrics.sh then reports the dispatch-to-report ratio and the opus value report
-  as unavailable rather than computing them from a missing event, and every
-  event after the first dispatch is attributed 'ambiguous'. Record what you see
-  in docs/LESSONS.md.
+    PostToolUse  -> dispatch_launched   the agentId, which is the join key
+    SubagentStop -> dispatch_end        real completion, and the in-flight count
 
+  After your next session that dispatches a worker, check that both appear:
+
+    jq -r .event .metrics/session-*.jsonl | sort | uniq -c
+
+  No dispatch_launched, or one with a null agent_id, means this version stopped
+  printing the receipt: worker costs still report, as "unjoined runs: N", with
+  their roles unknown. No dispatch_end means no SubagentStop, so durations and
+  the in-flight count go unavailable — and every event after the first dispatch
+  is attributed 'ambiguous', which is honest rather than wrong.
+
+  Token cost is read from the session transcript, not from any hook. Yours
+  should be at:
+
+    $TXDIR
+
+  If that directory does not exist, this version writes transcripts elsewhere or
+  not at all, and metrics.sh reports token cost as UNAVAILABLE with the path it
+  looked in. Record what you see in docs/LESSONS.md, and re-probe after a Claude
+  Code upgrade — this is the one part of the instrument that rests on a path and
+  a schema the harness owns.
 DEPROBE
 
 echo "== PROBE — frontmatter keys this script cannot verify"

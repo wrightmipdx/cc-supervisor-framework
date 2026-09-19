@@ -333,7 +333,8 @@ if [ "$DRY" -eq 0 ]; then
         rm -f "$TARGET/$p"; REMOVED+=("$p"); rmdir "$(dirname "$TARGET/$p")" 2>/dev/null ;;
     esac
   done < "$PLAN"
-  chmod +x "$TARGET"/.claude/hooks/*.sh "$TARGET/.claude/install-check.sh" 2>/dev/null
+  chmod +x "$TARGET"/.claude/hooks/*.sh "$TARGET"/.claude/scripts/*.sh \
+           "$TARGET/.claude/install-check.sh" 2>/dev/null
 fi
 
 # --- settings.json ------------------------------------------------------------
