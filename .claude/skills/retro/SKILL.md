@@ -56,8 +56,9 @@ every future session.
   first: twelve lessons of the length this file tends to produce is around 5.5k,
   so four of them never reach the session while the count looks fine. Read the
   hook's own "N older lesson(s) not shown" line rather than counting bullets. If
-  it is non-zero at 12 or fewer lessons, the fix is shorter lessons, not more of
-  them.
+  it is non-zero at 12 or fewer lessons, the fix is shorter lessons, not fewer of
+  them: keep one rule per bullet and put the evidence — the numbers, the
+  failing case, how it was found — in a file no hook reads, cited by date.
 
 ## 5. Session report — run it, do not estimate it
 
