@@ -185,6 +185,22 @@ eq "and no malformed event was written" 0 \
    "$(events | jq -r 'select(.event=="commit_landed" and .head == null)' | wc -l | tr -d ' ')"
 
 echo
+echo "--- mtime reads as a real epoch on this platform"
+# This is the case that was missing when the retro nudge's rate limiter passed
+# on macOS and failed on Linux: the BSD-first stat spelling does not fail on
+# GNU, it succeeds with the wrong number.
+touch "$TMP/stamp"
+MT=$(metrics_mtime_probe() { . "$KIT/.claude/hooks/lib/metrics.sh"; metrics_mtime "$1"; }; metrics_mtime_probe "$TMP/stamp")
+NOWS=$(date +%s)
+if [ "$MT" -gt 0 ] && [ $((NOWS - MT)) -ge 0 ] && [ $((NOWS - MT)) -lt 120 ]; then
+  PASS=$((PASS+1)); printf 'ok   %-50s %s\n' "metrics_mtime returns a current epoch" "$MT"
+else
+  FAIL=$((FAIL+1)); printf 'FAIL %-50s got=%s now=%s\n' "metrics_mtime returns a current epoch" "$MT" "$NOWS"
+fi
+eq "and 0 for a file that is not there" 0 \
+   "$(. "$KIT/.claude/hooks/lib/metrics.sh"; metrics_mtime "$TMP/no-such-file")"
+
+echo
 echo "--- the whole log is valid JSON, every line"
 eq "jq -s parses it" 0 "$(events | jq -s '.' >/dev/null 2>&1; printf %s $?)"
 eq "every event has a type"    0 "$(events | jq -r 'select(.event == null)' | wc -l | tr -d ' ')"

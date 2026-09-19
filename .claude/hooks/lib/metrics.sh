@@ -80,6 +80,19 @@ metrics_event() {
   } 2>/dev/null || true
 }
 
+# File mtime in epoch seconds, or 0 if it cannot be read.
+#
+# GNU stat is probed FIRST, and the order is the whole point. On Linux `stat -f`
+# means --file-system, so the BSD-first spelling does not fail there — it
+# SUCCEEDS and returns something that is not an mtime, which is worse. BSD stat
+# has no -c and fails cleanly, so trying -c first is safe on both.
+metrics_mtime() {
+  local m
+  m=$(stat -c %Y "$1" 2>/dev/null) || m=$(stat -f %m "$1" 2>/dev/null) || m=''
+  case "$m" in ''|*[!0-9]*) m=0 ;; esac
+  printf '%s' "$m"
+}
+
 # --- helpers the hooks share -------------------------------------------------
 
 # The ledger and lesson shape of the repo right now. Needs lib/ledger.sh and

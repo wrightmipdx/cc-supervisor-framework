@@ -32,12 +32,12 @@ FLAG="${TMPDIR:-/tmp}/retro-nudged-${SESSION}"
 # The flag is a rate limiter now. Re-arms after RETRO_NUDGE_SECONDS.
 if [ -f "$FLAG" ]; then
   NOW=$(date +%s 2>/dev/null || printf 0)
-  # BSD stat, then GNU stat, then give up. Giving up means nudging, not going
-  # silent: a hook that fails toward saying nothing is a hook you never notice
-  # has broken.
-  THEN=$(stat -f %m "$FLAG" 2>/dev/null || stat -c %Y "$FLAG" 2>/dev/null || printf 0)
-  case "$NOW$THEN" in *[!0-9]*) NOW=0; THEN=0 ;; esac
-  if [ "$THEN" -gt 0 ] && [ $((NOW - THEN)) -lt "${RETRO_NUDGE_SECONDS:-1800}" ]; then
+  case "$NOW" in ''|*[!0-9]*) NOW=0 ;; esac
+  # metrics_mtime returns 0 when it cannot read the time, and 0 means nudge: a
+  # hook that fails toward saying nothing is a hook you never notice has broken.
+  THEN=$(metrics_mtime "$FLAG")
+  if [ "$NOW" -gt 0 ] && [ "$THEN" -gt 0 ] \
+     && [ $((NOW - THEN)) -lt "${RETRO_NUDGE_SECONDS:-1800}" ]; then
     exit 0
   fi
 fi
