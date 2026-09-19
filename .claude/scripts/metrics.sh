@@ -49,7 +49,9 @@ LOG="${1:-}"
 # one is its own way to mislead.
 SKIPPED=0
 if [ -z "$LOG" ]; then
-  # shellcheck disable=SC2012
+  # Ordering is by mtime, which a glob cannot express portably, and the names
+  # are session-<uuid>.jsonl — no spaces to split on.
+  # shellcheck disable=SC2012,SC2045
   for CAND in $(ls -t "$METRICS_DIR"/session-*.jsonl 2>/dev/null); do
     if [ "$(jq -r -c 'select(.event != "session_start") | .event' "$CAND" 2>/dev/null | head -1)" != "" ]; then
       LOG="$CAND"; break

@@ -308,6 +308,12 @@ fi
 # requestId (the `.uuid` fallback returned nothing) gets a key of its own and is
 # never merged with another.
 : > "$TMP/priced"
+# `rid` is read but unused: every tab-delimited field must be consumed in order
+# or the ones after it shift left — the 003 defect where an empty requestId was
+# priced with the output count read as the model name.
+# `set -- $(rates_for ...)` splits four numbers on purpose; quoting it would
+# make them one argument.
+# shellcheck disable=SC2034,SC2046
 awk -F'\t' '
   { k = ($3 != "" && $3 != "-" ? $3 : "\001" NR)
     if (!(k in pos)) pos[k] = ++n
