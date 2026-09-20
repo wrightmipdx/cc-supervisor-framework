@@ -39,6 +39,7 @@ upgrade never overwrites it.
 | two strikes, escalate | two tries, then hand up | Failure path when a specialist can't close something out. |
 | fan out | split up the work | Parallel assignments instead of one large one. |
 | resume | pick back up | Continuing an unfinished assignment once, rather than starting over. |
+| break point | natural pause point | A place the work can stop cleanly and be picked back up later, because everything before it is finished and handed over. |
 
 ## Artifacts & status
 

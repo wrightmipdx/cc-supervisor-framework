@@ -25,6 +25,10 @@ say so rather than guessing at content.
 
 **What we're delivering:** <one or two sentences, outcomes not activities>
 
+<When the plan has at least one pause point, append ", apart from the
+pause-point choice below" inside this heading's parentheses. When it has
+none, leave the heading exactly as written below.>
+
 **Decisions already made (nothing further to approve here):**
 - <each sponsor/stakeholder decision that's already closed, in plain terms>
 
@@ -39,6 +43,13 @@ parts of the system:
 Phase 2 — <what happens after Phase 1 closes, and why it waits>
 
 Phase 3 — <final walkthrough / acceptance / close-out>
+
+**Natural pause points:** <each phase boundary the work could pause at, named
+by phase and never by task id, saying what finishes first — the whole phase
+does, not part of it — then the trade-off and the choice: pausing costs a
+short catch-up when we pick it back up, running through doesn't, and no
+answer means run through. Omit this line entirely when there is no such
+boundary.>
 
 **Checks along the way**
 - Every change gets a quality review before it's accepted.
@@ -77,7 +88,8 @@ how on-hand inventory is calculated, capacity (peak pallets) tracking, a
 size limit and clearer errors on file imports, navigation fixes across four
 screens, and traceability for where a demand number came from.
 
-**Decisions already made (nothing further to approve here):**
+**Decisions already made (nothing further to approve here, apart from the
+pause-point choice below):**
 - On-hand inventory is calculated as the latest physical count plus anything
   received since, with the previous method kept as a fallback.
 - The specific check the sponsor asked for — that two reports agree on one
@@ -107,6 +119,15 @@ Phase 3 — the Lead runs a full walkthrough in a sandboxed copy of the system
 (never touching the live one) against the six agreed acceptance checks, then
 closes out the round: reconciling the requirements checklist, capturing
 lessons learned, and archiving.
+
+**Natural pause points:** There are two — after Phase 1, once all five pieces
+in it are finished and handed over, and again after Phase 2, once the live
+data feed is connected and Phase 3's walkthrough is all that's left. Either
+one means the whole phase finishes first, not part of it, and we'd pick the
+rest back up later instead of running all three phases in one go. Pausing
+costs a short catch-up when we resume; running straight through doesn't.
+Either is fine — say the word if you'd prefer to pause at one of them,
+otherwise we'll run through.
 
 **Checks along the way**
 - Every change gets a quality review before it's accepted; the Phase 2 change
