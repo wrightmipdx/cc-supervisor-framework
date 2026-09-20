@@ -420,7 +420,7 @@ awk -F'\t' '
     tier[$3] += $8; ttok[$3] += $4+$5+$6+$7; alltok += $4+$5+$6+$7
     if ($1 == "worker") runs[$2] = 1 }
   END {
-    printf "   %-10s %-8s %6s %10s %14s %9s %6s\n", "lane","tier","turns","out tok","billable tok","est $","share"
+    printf "   %-10s %-8s %6s %10s %14s %9s %6s\n", "lane","tier","turns","out tok","billable tok","API $est","share"
     for (k in n) { split(k, p, "\t")
       printf "SORT%09d   %-10s %-8s %6d %10d %14d %9.2f %5.0f%%\n", 1000000-t[k]*1000, p[1], p[2], n[k], out[k], tt[k], t[k], 100*t[k]/(total?total:1) | "sort" }
     close("sort")
@@ -478,7 +478,7 @@ else
     FILENAME == ARGV[2] { role[$1] = $2; tier[$1] = $3; task[$1] = $4; next }
     {
       id = $1; r = role[id]; if (r == "") { r = "unjoined"; unjoined++ }
-      printf "%012d\t   %-12s %-7s %-5s turns %3d  est $%8.2f  verdict %-10s %d blocker(s), %d should-fix\n", \
+      printf "%012d\t   %-12s %-7s %-5s turns %3d  API $est %8.2f  verdict %-10s %d blocker(s), %d should-fix\n", \
              999999999 - int((cost[id]+0) * 100), \
              r, (tier[id] ? tier[id] : "?"), (task[id] ? task[id] : "-"), \
              turns[id]+0, cost[id]+0, $2, $3, $4
@@ -621,10 +621,10 @@ else
       IFS=$'\t' read -r WT WTOK WCOST <<< "$READOUT"
       if [ "$HAVE_MEDIAN" -eq 1 ]; then
         RATIO=$(awk -v c="$WCOST" -v m="$MEDIAN" 'BEGIN { if (m+0 == 0) print "n/a"; else printf "%.1fx", c/m }')
-        printf '   %-10s %d turn(s), %d billable tok, est $%.2f ceiling  (%s the session'"'"'s median briefed-task cost)\n' \
+        printf '   %-10s %d turn(s), %d billable tok, API $est %.2f ceiling  (%s the session'"'"'s median briefed-task cost)\n' \
           "$head" "$WT" "$WTOK" "$WCOST" "$RATIO"
       else
-        printf '   %-10s %d turn(s), %d billable tok, est $%.2f ceiling  (UNAVAILABLE — no worker runs this session to compare against)\n' \
+        printf '   %-10s %d turn(s), %d billable tok, API $est %.2f ceiling  (UNAVAILABLE — no worker runs this session to compare against)\n' \
           "$head" "$WT" "$WTOK" "$WCOST"
       fi
     done < "$TMP/windows"
