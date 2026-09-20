@@ -118,8 +118,12 @@ out whether it was resumed or lost.
 isolation rather than from tiering. A chair share climbing session over session
 means work is being done in the chair that should have been briefed out.
 
-Add by hand the one thing the report cannot see: **any task where you typed a
-long implementation instead of briefing it.**
+The report now states this itself: every direct-lane decision — a task you
+typed instead of briefing it — shows up as a reasoned row, carrying the
+reason you gave at the time via `.claude/scripts/direct-lane.sh`, in both
+`## Commits` and the chair-authored windows below. Nothing to add by hand
+here anymore; if a row is missing its reason, that is the fact to say out
+loud.
 
 Dollars are an estimate from a list-price table dated in the report's header.
 Subscription accounting is not list price, so the **shares** are what carry a

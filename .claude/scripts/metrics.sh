@@ -197,16 +197,29 @@ fi
 # code, and never which task it closed. Workers never commit (dispatch rule
 # 6), so every commit is chair-TYPED; what this distinguishes is whether a
 # worker authored the code that landed. 005/metrics.sh:195-205.
+#
+# A `direct_lane` event (T2) folded into the same reduce carries the reason
+# the chair gave AT THE TIME it chose not to dispatch — a REASONED row, never
+# to be confused with a row this block only INFERRED from commit adjacency.
+# The reason is consumed by the next commit_landed that closes the window
+# (or by the next dispatch/commit, which resets it) so it is never carried
+# past the decision it was given for.
 if [ "$N_LAND" -gt 0 ]; then
   DIRECT_ROWS=$(printf '%s' "$EV" | jq -r '
-      [.[] | select(.event == "dispatch" or .event == "commit_landed")]
-      | reduce .[] as $e ({seen: false, out: []};
-          if $e.event == "dispatch" then {seen: true, out: .out}
-          elif .seen then {seen: false, out: .out}
-          else {seen: false, out: (.out + [$e])} end)
+      [.[] | select(.event == "dispatch" or .event == "direct_lane" or .event == "commit_landed")]
+      | reduce .[] as $e ({seen: false, reason: null, out: []};
+          if $e.event == "dispatch" then {seen: true, reason: null, out: .out}
+          elif $e.event == "direct_lane" then
+            {seen: .seen,
+             reason: (if (($e.reason // "") | length) > 0 then $e.reason else .reason end),
+             out: .out}
+          elif .seen then {seen: false, reason: .reason, out: .out}
+          else {seen: false, reason: null,
+                out: (.out + [$e + {reason: .reason}])} end)
       | .out[]
       | [(.head[0:8]), .commit_type, (.files|tostring), (.insertions|tostring),
-         (if (.files > 2 or .insertions > 50) then "1" else "0" end)]
+         (if (.files > 2 or .insertions > 50) then "1" else "0" end),
+         (.reason // "")]
       | @tsv')
   DIRECT_N=0; OVER_N=0
   if [ -n "$DIRECT_ROWS" ]; then
@@ -217,10 +230,14 @@ if [ "$N_LAND" -gt 0 ]; then
   if [ "$DIRECT_N" -gt 0 ]; then
     printf '   establishes only that no worker preceded the commit, not who wrote it —\n'
     printf '   workers never commit, so every commit is chair-typed.\n'
-    printf '%s\n' "$DIRECT_ROWS" | while IFS="$(printf '\t')" read -r H T F I OVER; do
+    printf '%s\n' "$DIRECT_ROWS" | while IFS="$(printf '\t')" read -r H T F I OVER REASON; do
       FLAG=""
       [ "$OVER" = "1" ] && FLAG="  OVER BOUND (dispatch rule 7: <=2 files, <=~50 lines)"
-      printf '     %-8s  %-8s files=%s insertions=%s%s\n' "$H" "$T" "$F" "$I" "$FLAG"
+      if [ -n "$REASON" ]; then
+        printf '     %-8s  %-8s files=%s insertions=%s%s  reason: %s\n' "$H" "$T" "$F" "$I" "$FLAG" "$REASON"
+      else
+        printf '     %-8s  %-8s files=%s insertions=%s%s  (no reason logged)\n' "$H" "$T" "$F" "$I" "$FLAG"
+      fi
     done
     printf '   past the direct lane'"'"'s own hands-on bound (advisory, never\n'
     printf '   enforced): %s\n' "$OVER_N"

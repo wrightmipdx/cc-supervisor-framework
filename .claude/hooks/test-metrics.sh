@@ -257,9 +257,18 @@ printf 'base\n' > "$DLREPO/a.txt"; git -C "$DLREPO" add a.txt
 git -C "$DLREPO" commit -qm "chore: base"
 hook 70-commit-landed.sh "$DLB" "$DLREPO" >/dev/null   # baseline only, no event
 
+# T4: a direct_lane event, logged the way the chair really logs one -- via
+# the 25-direct-lane.sh hook intercepting a real Bash call to
+# direct-lane.sh -- precedes this commit, so its row must carry the reason,
+# not merely be inferred from commit adjacency.
+DLPAY=$(jq -cn --arg sid dlanesess --arg cmd \
+  '.claude/scripts/direct-lane.sh T9a "typo fix, no worker needed"' \
+  '{session_id:$sid, tool_input:{command:$cmd}}')
+hook 25-direct-lane.sh "$DLPAY" "$DLREPO" >/dev/null
+
 printf 'one\n' >> "$DLREPO/a.txt"; git -C "$DLREPO" add a.txt
 git -C "$DLREPO" commit -qm "fix: small"
-hook 70-commit-landed.sh "$DLB" "$DLREPO" >/dev/null   # direct-lane, within bound
+hook 70-commit-landed.sh "$DLB" "$DLREPO" >/dev/null   # direct-lane, within bound, reasoned
 
 hook 20-pre-delegate.sh \
   "$SDL,\"tool_input\":{\"subagent_type\":\"builder\",\"prompt\":\"T9\"}}" "$DLREPO" >/dev/null
@@ -271,7 +280,7 @@ hook 70-commit-landed.sh "$DLB" "$DLREPO" >/dev/null   # NOT direct-lane
 for i in 1 2 3; do printf 'f%s\n' "$i" > "$DLREPO/f$i.txt"; git -C "$DLREPO" add "f$i.txt"; done
 seq 1 60 >> "$DLREPO/a.txt"; git -C "$DLREPO" add a.txt
 git -C "$DLREPO" commit -qm "fix: big direct edit"
-hook 70-commit-landed.sh "$DLB" "$DLREPO" >/dev/null   # direct-lane, OVER BOUND
+hook 70-commit-landed.sh "$DLB" "$DLREPO" >/dev/null   # direct-lane, OVER BOUND, no reason logged
 
 DLOUT=$(.claude/scripts/metrics.sh "$LOGDIR/session-dlanesess.jsonl")
 eq "direct-lane count excludes the post-dispatch commit" 2 \
@@ -280,6 +289,196 @@ eq "over-bound count flags only the big one" 1 \
    "$(printf '%s' "$DLOUT" | grep -c 'OVER BOUND')"
 eq "the header states what the inference establishes, not who wrote it" 1 \
    "$(printf '%s' "$DLOUT" | grep -c 'no worker preceded the commit, not who wrote it')"
+eq "the reasoned row carries the chair's logged reason" 1 \
+   "$(printf '%s' "$DLOUT" | grep -c 'reason: typo fix, no worker needed')"
+eq "the row with no preceding direct_lane event is marked, not blank" 1 \
+   "$(printf '%s' "$DLOUT" | grep -c '(no reason logged)')"
+
+echo
+echo "--- T4 regression: a direct_lane reason must not be lost when a dispatch's own commit is dropped"
+# dispatch(A) -> direct_lane(B, reason) -> commit_landed(A's, dropped as
+# dispatch-attributed) -> commit_landed(B's, the genuine direct-lane commit).
+# A's dropped commit used to unconditionally wipe the accumulated reason,
+# so B's own commit -- which the reason was actually for -- reported as if
+# no reason had ever been logged.
+SNREPO="$TMP/sandwich-repo"; mkdir -p "$SNREPO"; git -C "$SNREPO" init -q
+git -C "$SNREPO" config user.email t@t; git -C "$SNREPO" config user.name t
+SSN='{"session_id":"sandwichsess"'
+SNB="$SSN,\"tool_input\":{\"command\":\"git status\"}}"
+printf 'base\n' > "$SNREPO/a.txt"; git -C "$SNREPO" add a.txt
+git -C "$SNREPO" commit -qm "chore: base"
+hook 70-commit-landed.sh "$SNB" "$SNREPO" >/dev/null   # baseline only, no event
+
+hook 20-pre-delegate.sh \
+  "$SSN,\"tool_input\":{\"subagent_type\":\"builder\",\"prompt\":\"TA\"}}" "$SNREPO" >/dev/null
+
+SNPAY=$(jq -cn --arg sid sandwichsess --arg cmd \
+  '.claude/scripts/direct-lane.sh TB "sandwiched reason must reach TB, not vanish with TA"' \
+  '{session_id:$sid, tool_input:{command:$cmd}}')
+hook 25-direct-lane.sh "$SNPAY" "$SNREPO" >/dev/null
+
+printf 'a-change\n' >> "$SNREPO/a.txt"; git -C "$SNREPO" add a.txt
+git -C "$SNREPO" commit -qm "fix: TA's dispatched work"
+hook 70-commit-landed.sh "$SNB" "$SNREPO" >/dev/null   # TA's commit -- dropped, dispatch-attributed
+
+printf 'b-change\n' >> "$SNREPO/a.txt"; git -C "$SNREPO" add a.txt
+git -C "$SNREPO" commit -qm "fix: TB's direct-lane commit"
+hook 70-commit-landed.sh "$SNB" "$SNREPO" >/dev/null   # TB's commit -- must carry the reason
+
+SNOUT=$(.claude/scripts/metrics.sh "$LOGDIR/session-sandwichsess.jsonl")
+eq "exactly one direct-lane commit (TA's dispatched commit is excluded)" 1 \
+   "$(printf '%s' "$SNOUT" | grep -oE 'direct-lane commits.*: [0-9]+' | grep -oE '[0-9]+$')"
+eq "TB's commit carries the reason logged before TA's commit dropped it" 1 \
+   "$(printf '%s' "$SNOUT" | grep -c 'reason: sandwiched reason must reach TB, not vanish with TA')"
+
+echo
+echo "--- T4 regression: the ORDINARY case (a direct-lane commit that lands) must also"
+echo "    carry its reason in session-tokens.sh's chair-authored windows, not only metrics.sh"
+# The main per-commit windows reduce originally tracked no direct_lane events
+# at all -- reason threading was only wired into the TRAILING (no-commit) case
+# first, so the common case (a direct-lane decision that DOES land a commit,
+# the same sandwichsess/TB commit above) showed a reason in metrics.sh's
+# ## Commits block but NOT in the Chair-authored windows section below it.
+SNTX="$TMP/tx-sandwich"; mkdir -p "$SNTX"
+# An EARLY timestamp, not a far-future one like the trailing-window fixture
+# above: this window is CLOSED (has a real "end", the commit's own real-time
+# timestamp), and the "commit landed before any priced turn" guard requires
+# the earliest priced turn to be AT OR BEFORE that end. The trailing window
+# has no such upper bound, which is why 2030 works there but not here.
+cat > "$SNTX/sandwichsess.jsonl" <<'FIX'
+{"type":"assistant","requestId":"sn1","timestamp":"2020-01-01T00:00:00.000Z","message":{"model":"claude-fable-5-1","usage":{"input_tokens":10,"output_tokens":50,"cache_read_input_tokens":0,"cache_creation_input_tokens":0}}}
+FIX
+
+SNTOUT=$(CLAUDE_PROJECT_DIR="$SNREPO" CLAUDE_TRANSCRIPT_DIR="$SNTX" METRICS_DIR="$LOGDIR" \
+  .claude/scripts/session-tokens.sh sandwichsess 2>&1)
+eq "TB's ordinary (non-trailing) window carries the reason too" 1 \
+   "$(printf '%s' "$SNTOUT" | grep -c 'reason: sandwiched reason must reach TB, not vanish with TA')"
+
+echo
+echo "--- T4/X5: a direct_lane decision with no commit at all still prices, in session-tokens.sh"
+# T7-shape (opanalyst's evidence session): a verification pass that ends
+# without a commit. The chair-authored-windows reduce in session-tokens.sh
+# only ever grew on a commit_landed closing a window, so this used to vanish
+# from the cost report entirely (I1). It must now still produce a priced,
+# reasoned "trailing" row.
+TRREPO="$TMP/trailing-repo"; mkdir -p "$TRREPO"; git -C "$TRREPO" init -q
+git -C "$TRREPO" config user.email t@t; git -C "$TRREPO" config user.name t
+STR='{"session_id":"trailsess"'
+TRB="$STR,\"tool_input\":{\"command\":\"git status\"}}"
+printf 'base\n' > "$TRREPO/a.txt"; git -C "$TRREPO" add a.txt
+git -C "$TRREPO" commit -qm "chore: base"
+hook 70-commit-landed.sh "$TRB" "$TRREPO" >/dev/null   # baseline only, no event
+
+TRPAY=$(jq -cn --arg sid trailsess --arg cmd \
+  '.claude/scripts/direct-lane.sh T7 "verification pass, no code changed, no commit"' \
+  '{session_id:$sid, tool_input:{command:$cmd}}')
+hook 25-direct-lane.sh "$TRPAY" "$TRREPO" >/dev/null
+# No commit follows: the session log's last relevant event is this
+# direct_lane, with nothing closing its window.
+
+eq "the direct_lane event is captured with no commit at all" 1 \
+   "$(cat "$LOGDIR/session-trailsess.jsonl" | jq -r 'select(.event=="direct_lane")' | jq -s 'length')"
+
+# session-tokens.sh reads token cost from a real transcript, never the event
+# log alone — a minimal fixture, one billed turn dated after the baseline
+# commit, is enough to get past its own "no turns" guard and reach the
+# chair-windows block.
+TRTX="$TMP/tx-trailing"; mkdir -p "$TRTX"
+cat > "$TRTX/trailsess.jsonl" <<'FIX'
+{"type":"assistant","requestId":"tr1","timestamp":"2030-01-01T00:00:00.000Z","message":{"model":"claude-fable-5-1","usage":{"input_tokens":10,"output_tokens":50,"cache_read_input_tokens":0,"cache_creation_input_tokens":0}}}
+FIX
+
+TROUT=$(CLAUDE_PROJECT_DIR="$TRREPO" CLAUDE_TRANSCRIPT_DIR="$TRTX" METRICS_DIR="$LOGDIR" \
+  .claude/scripts/session-tokens.sh trailsess 2>&1)
+eq "the trailing window is priced, not silent" 1 \
+   "$(printf '%s' "$TROUT" | grep -c 'trailing.*ceiling')"
+eq "it carries the reason the chair gave" 1 \
+   "$(printf '%s' "$TROUT" | grep -c 'reason: verification pass, no code changed, no commit')"
+
+echo
+echo "--- T4 regression: a dispatch after a direct_lane must not inherit its stale reason"
+# commit_landed -> direct_lane(reason "R1") -> dispatch -> session ends, no
+# commit. The trailing window is now a DISPATCH in flight, not the earlier
+# direct-lane decision, and must not show "R1" — that reason described work
+# that already closed at the direct_lane event, not what is open now.
+STREPO="$TMP/stale-repo"; mkdir -p "$STREPO"; git -C "$STREPO" init -q
+git -C "$STREPO" config user.email t@t; git -C "$STREPO" config user.name t
+SST='{"session_id":"stalesess"'
+STB="$SST,\"tool_input\":{\"command\":\"git status\"}}"
+printf 'base\n' > "$STREPO/a.txt"; git -C "$STREPO" add a.txt
+git -C "$STREPO" commit -qm "chore: base"
+hook 70-commit-landed.sh "$STB" "$STREPO" >/dev/null   # baseline only, no event
+
+STPAY=$(jq -cn --arg sid stalesess --arg cmd \
+  '.claude/scripts/direct-lane.sh T8 "R1 should not leak forward"' \
+  '{session_id:$sid, tool_input:{command:$cmd}}')
+hook 25-direct-lane.sh "$STPAY" "$STREPO" >/dev/null
+
+hook 20-pre-delegate.sh \
+  "$SST,\"tool_input\":{\"subagent_type\":\"builder\",\"prompt\":\"T9 -- dispatched after the direct-lane\"}}" "$STREPO" >/dev/null
+# No commit follows the dispatch: the trailing state is now an in-flight
+# dispatch, and its window must not carry T8's reason forward.
+
+STTX="$TMP/tx-stale"; mkdir -p "$STTX"
+cat > "$STTX/stalesess.jsonl" <<'FIX'
+{"type":"assistant","requestId":"st1","timestamp":"2030-01-01T00:00:00.000Z","message":{"model":"claude-fable-5-1","usage":{"input_tokens":10,"output_tokens":50,"cache_read_input_tokens":0,"cache_creation_input_tokens":0}}}
+FIX
+
+STOUT=$(CLAUDE_PROJECT_DIR="$STREPO" CLAUDE_TRANSCRIPT_DIR="$STTX" METRICS_DIR="$LOGDIR" \
+  .claude/scripts/session-tokens.sh stalesess 2>&1)
+eq "the trailing window still prices the in-flight dispatch" 1 \
+   "$(printf '%s' "$STOUT" | grep -c 'trailing.*ceiling')"
+eq "it does NOT leak the earlier direct_lane's reason forward" 0 \
+   "$(printf '%s' "$STOUT" | grep -c 'R1 should not leak forward')"
+eq "a reasonless trailing dispatch renders as no-reason-logged" 1 \
+   "$(printf '%s' "$STOUT" | grep -c 'reason: (no reason logged)')"
+
+echo
+echo "--- T4 regression: a dropped (dispatch-attributed) commit must not close a"
+echo "    still-pending direct_lane reason out of the report entirely"
+# dispatch(A) -> direct_lane(B, reason) -> commit_landed(A's, dropped) ->
+# session ends, B's own commit never lands. Neither the main windows reduce
+# (never emits a row for a dropped commit) nor an earlier TRAIL (which treated
+# ANY commit_landed, dropped or not, as fully closing the window) showed this
+# row -- B's reasoned, still-open decision vanished from the report entirely,
+# in both metrics.sh and session-tokens.sh. TRAIL now tracks the same
+# {seen, reason} state as the main reduce, so a DROPPED commit_landed
+# preserves the pending reason instead of wiping it.
+DRREPO="$TMP/dropped-repo"; mkdir -p "$DRREPO"; git -C "$DRREPO" init -q
+git -C "$DRREPO" config user.email t@t; git -C "$DRREPO" config user.name t
+SDR='{"session_id":"droppedsess"'
+DRB="$SDR,\"tool_input\":{\"command\":\"git status\"}}"
+printf 'base\n' > "$DRREPO/a.txt"; git -C "$DRREPO" add a.txt
+git -C "$DRREPO" commit -qm "chore: base"
+hook 70-commit-landed.sh "$DRB" "$DRREPO" >/dev/null   # baseline only, no event
+
+hook 20-pre-delegate.sh \
+  "$SDR,\"tool_input\":{\"subagent_type\":\"builder\",\"prompt\":\"TC\"}}" "$DRREPO" >/dev/null
+
+DRPAY=$(jq -cn --arg sid droppedsess --arg cmd \
+  '.claude/scripts/direct-lane.sh TD "TD still open when TC land, must not vanish"' \
+  '{session_id:$sid, tool_input:{command:$cmd}}')
+hook 25-direct-lane.sh "$DRPAY" "$DRREPO" >/dev/null
+
+printf 'c-change\n' >> "$DRREPO/a.txt"; git -C "$DRREPO" add a.txt
+git -C "$DRREPO" commit -qm "fix: TC's dispatched work"
+hook 70-commit-landed.sh "$DRB" "$DRREPO" >/dev/null   # TC's commit -- dropped
+# TD's own commit never lands: the session ends here.
+
+eq "the direct_lane event was captured" 1 \
+   "$(cat "$LOGDIR/session-droppedsess.jsonl" | jq -r 'select(.event=="direct_lane")' | jq -s 'length')"
+
+DRTX="$TMP/tx-dropped"; mkdir -p "$DRTX"
+cat > "$DRTX/droppedsess.jsonl" <<'FIX'
+{"type":"assistant","requestId":"dr1","timestamp":"2020-01-01T00:00:00.000Z","message":{"model":"claude-fable-5-1","usage":{"input_tokens":10,"output_tokens":50,"cache_read_input_tokens":0,"cache_creation_input_tokens":0}}}
+FIX
+
+DROUT=$(CLAUDE_PROJECT_DIR="$DRREPO" CLAUDE_TRANSCRIPT_DIR="$DRTX" METRICS_DIR="$LOGDIR" \
+  .claude/scripts/session-tokens.sh droppedsess 2>&1)
+eq "TD's still-open decision still shows as a trailing, priced row" 1 \
+   "$(printf '%s' "$DROUT" | grep -c 'trailing.*ceiling')"
+eq "it carries TD's reason, not silence" 1 \
+   "$(printf '%s' "$DROUT" | grep -c 'reason: TD still open when TC land, must not vanish')"
 
 echo
 echo "--- 005: a session with no dispatches at all — every landed commit is direct-lane"

@@ -556,8 +556,6 @@ printf '   sponsor, not only the commit that closed it.\n'
 
 if [ ! -f "$EVLOG" ]; then
   printf '   UNAVAILABLE — no commit_landed events in %s, nothing to window\n' "$EVLOG"
-elif [ "$(jq -r -c 'select(.event == "commit_landed") | 1' "$EVLOG" 2>/dev/null | head -1)" != "1" ]; then
-  printf '   UNAVAILABLE — no commit_landed events in %s, nothing to window\n' "$EVLOG"
 else
   # "-" for a missing start below, never "": an EMPTY tab-delimited field is
   # the exact 003 IFS-tab defect documented above emit_usage — read with IFS
@@ -569,23 +567,64 @@ else
   # the original fixture's own first commit genuinely deserved UNAVAILABLE,
   # so the bug produced the right answer by the wrong mechanism. See the
   # added self-test case below, which does not have that property.
+  # `reason` travels alongside `seen`/`prev`, same contract as metrics.sh's
+  # DIRECT_ROWS reduce (and the same sandwich-ordering fix applied there): a
+  # dropped, dispatch-attributed commit_landed must NOT wipe a reason a
+  # direct_lane event logged for a LATER, still-open commit — only `dispatch`
+  # and a commit that actually CONSUMES the reason reset it to null.
   jq -r -s '
-    [.[] | select(.event == "dispatch" or .event == "commit_landed")]
+    [.[] | select(.event == "dispatch" or .event == "direct_lane" or .event == "commit_landed")]
     | reduce .[] as $e (
-        {seen: false, prev: null, out: []};
+        {seen: false, prev: null, reason: null, out: []};
         if $e.event == "dispatch" then
-          {seen: true, prev: .prev, out: .out}
+          {seen: true, prev: .prev, reason: null, out: .out}
+        elif $e.event == "direct_lane" then
+          {seen: .seen, prev: .prev,
+           reason: (if (($e.reason // "") | length) > 0 then $e.reason else .reason end),
+           out: .out}
         elif .seen then
-          {seen: false, prev: $e.ts, out: .out}
+          {seen: false, prev: $e.ts, reason: .reason, out: .out}
         else
-          {seen: false, prev: $e.ts,
-           out: (.out + [{head: (($e.head // "")[0:8]), start: .prev, end: $e.ts}])}
+          {seen: false, prev: $e.ts, reason: null,
+           out: (.out + [{head: (($e.head // "")[0:8]), start: .prev, end: $e.ts, reason: .reason}])}
         end)
     | .out[]
-    | [.head, (.start // "-"), .end] | @tsv
+    | [.head, (.start // "-"), .end, (.reason // "-")] | @tsv
   ' "$EVLOG" 2>/dev/null > "$TMP/windows"
 
-  if [ ! -s "$TMP/windows" ]; then
+  # I1's blind spot (X5/T7-shape): a `direct_lane` decision (or a dispatch)
+  # that closes NO commit at all — a verification pass, a diagnosis-only
+  # detour — used to vanish here, because the reduce above only grows `out`
+  # on a KEPT (direct-lane-attributed) commit_landed. This second pass looks
+  # at the TRAILING state only, and MUST track the exact same {seen, reason}
+  # state machine as the main reduce above — not just "did anything at all
+  # follow the last commit_landed". An earlier version treated ANY
+  # commit_landed as fully closing the window, including a DROPPED
+  # (dispatch-attributed) one — so `dispatch(A) -> direct_lane(B, reason) ->
+  # commit_landed(A's, dropped)` with B's own commit never landing lost B's
+  # reason entirely: the main reduce never emits a row for it (A's commit was
+  # dropped, B's never landed) and the old TRAIL saw A's commit_landed and
+  # called the window fully closed, so neither report surface showed it.
+  # Reason survives a DROPPED commit_landed here for the same reason it does
+  # above: that commit was never what the reason was for.
+  TRAIL=$(jq -r -s '
+    [.[] | select(.event == "dispatch" or .event == "direct_lane" or .event == "commit_landed")]
+    | reduce .[] as $e (
+        {seen: false, prev: null, reason: null};
+        if $e.event == "dispatch" then
+          {seen: true, prev: .prev, reason: null}
+        elif $e.event == "direct_lane" then
+          {seen: .seen, prev: .prev,
+           reason: (if (($e.reason // "") | length) > 0 then $e.reason else .reason end)}
+        elif .seen then
+          {seen: false, prev: $e.ts, reason: .reason}
+        else
+          {seen: false, prev: $e.ts, reason: null}
+        end)
+    | if (.seen or (.reason != null)) then [(.prev // "-"), (.reason // "-")] | @tsv else empty end
+  ' "$EVLOG" 2>/dev/null)
+
+  if [ ! -s "$TMP/windows" ] && [ -z "$TRAIL" ]; then
     printf '   UNAVAILABLE — no commit_landed events in %s, nothing to window\n' "$EVLOG"
   else
     # Earliest main-lane turn carrying a real timestamp — the floor below which
@@ -594,6 +633,8 @@ else
 
     # Median of this session's own briefed-run costs (Change 2's $TMP/runcost,
     # untouched). Absent or empty means no worker runs this session at all.
+    # Reused below by the trailing window too — same "?:" -guarded ratio, never
+    # a bare division, whether or not a dispatch happened this session (X4).
     HAVE_MEDIAN=0
     if [ -s "$TMP/runcost" ]; then
       HAVE_MEDIAN=1
@@ -604,29 +645,60 @@ else
               else { print (a[NR/2] + a[NR/2+1]) / 2 } }')
     fi
 
-    while IFS=$'\t' read -r head start end; do
-      if [ -z "$EARLIEST_MAIN" ] || [[ "$end" < "$EARLIEST_MAIN" ]]; then
-        printf '   %-10s UNAVAILABLE — commit landed before any priced turn, window start unknown\n' "$head"
-        continue
-      fi
-      if [ "$start" != "-" ]; then
-        READOUT=$(awk -F'\t' -v s="$start" -v e="$end" '
-          $1 == "main" && $9 != "-" && $9 > s && $9 <= e { n++; tok += $4+$5+$6+$7; cost += $8 }
+    if [ -s "$TMP/windows" ]; then
+      while IFS=$'\t' read -r head start end wreason; do
+        if [ -z "$EARLIEST_MAIN" ] || [[ "$end" < "$EARLIEST_MAIN" ]]; then
+          printf '   %-10s UNAVAILABLE — commit landed before any priced turn, window start unknown\n' "$head"
+          continue
+        fi
+        if [ "$start" != "-" ]; then
+          READOUT=$(awk -F'\t' -v s="$start" -v e="$end" '
+            $1 == "main" && $9 != "-" && $9 > s && $9 <= e { n++; tok += $4+$5+$6+$7; cost += $8 }
+            END { printf "%d\t%d\t%.4f", n+0, tok+0, cost+0 }' "$TMP/priced")
+        else
+          READOUT=$(awk -F'\t' -v e="$end" '
+            $1 == "main" && $9 != "-" && $9 <= e { n++; tok += $4+$5+$6+$7; cost += $8 }
+            END { printf "%d\t%d\t%.4f", n+0, tok+0, cost+0 }' "$TMP/priced")
+        fi
+        IFS=$'\t' read -r WT WTOK WCOST <<< "$READOUT"
+        WREASON_TXT="$wreason"
+        [ "$WREASON_TXT" = "-" ] && WREASON_TXT="(no reason logged)"
+        if [ "$HAVE_MEDIAN" -eq 1 ]; then
+          RATIO=$(awk -v c="$WCOST" -v m="$MEDIAN" 'BEGIN { if (m+0 == 0) print "n/a"; else printf "%.1fx", c/m }')
+          printf '   %-10s %d turn(s), %d billable tok, API $est %.2f ceiling  (%s the session'"'"'s median briefed-task cost)  reason: %s\n' \
+            "$head" "$WT" "$WTOK" "$WCOST" "$RATIO" "$WREASON_TXT"
+        else
+          printf '   %-10s %d turn(s), %d billable tok, API $est %.2f ceiling  (UNAVAILABLE — no worker runs this session to compare against)  reason: %s\n' \
+            "$head" "$WT" "$WTOK" "$WCOST" "$WREASON_TXT"
+        fi
+      done < "$TMP/windows"
+    fi
+
+    if [ -n "$TRAIL" ]; then
+      IFS=$'\t' read -r TSTART TREASON <<< "$TRAIL"
+      if [ "$TSTART" != "-" ]; then
+        READOUT=$(awk -F'\t' -v s="$TSTART" '
+          $1 == "main" && $9 != "-" && $9 > s { n++; tok += $4+$5+$6+$7; cost += $8 }
           END { printf "%d\t%d\t%.4f", n+0, tok+0, cost+0 }' "$TMP/priced")
       else
-        READOUT=$(awk -F'\t' -v e="$end" '
-          $1 == "main" && $9 != "-" && $9 <= e { n++; tok += $4+$5+$6+$7; cost += $8 }
+        READOUT=$(awk -F'\t' '
+          $1 == "main" && $9 != "-" { n++; tok += $4+$5+$6+$7; cost += $8 }
           END { printf "%d\t%d\t%.4f", n+0, tok+0, cost+0 }' "$TMP/priced")
       fi
       IFS=$'\t' read -r WT WTOK WCOST <<< "$READOUT"
+      REASON_TXT="$TREASON"
+      [ "$REASON_TXT" = "-" ] && REASON_TXT="(no reason logged)"
       if [ "$HAVE_MEDIAN" -eq 1 ]; then
         RATIO=$(awk -v c="$WCOST" -v m="$MEDIAN" 'BEGIN { if (m+0 == 0) print "n/a"; else printf "%.1fx", c/m }')
-        printf '   %-10s %d turn(s), %d billable tok, API $est %.2f ceiling  (%s the session'"'"'s median briefed-task cost)\n' \
-          "$head" "$WT" "$WTOK" "$WCOST" "$RATIO"
+        printf '   %-10s %d turn(s), %d billable tok, API $est %.2f ceiling  (%s the session'"'"'s median briefed-task cost)  reason: %s\n' \
+          "trailing" "$WT" "$WTOK" "$WCOST" "$RATIO" "$REASON_TXT"
       else
-        printf '   %-10s %d turn(s), %d billable tok, API $est %.2f ceiling  (UNAVAILABLE — no worker runs this session to compare against)\n' \
-          "$head" "$WT" "$WTOK" "$WCOST"
+        printf '   %-10s %d turn(s), %d billable tok, API $est %.2f ceiling  (UNAVAILABLE — no worker runs this session to compare against)  reason: %s\n' \
+          "trailing" "$WT" "$WTOK" "$WCOST" "$REASON_TXT"
       fi
-    done < "$TMP/windows"
+      printf '   ^ open-ended: no commit_landed closed this window — I1'"'"'s blind spot, a\n'
+      printf '     direct-lane decision (or dispatch) still in flight when the session log\n'
+      printf '     was read, priced anyway rather than silently vanishing.\n'
+    fi
   fi
 fi
