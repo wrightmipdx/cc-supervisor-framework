@@ -184,9 +184,9 @@ echo "== paths the skills assume"
 # The kit ships the seeds; a consumer has the files seeded from them. Asserting
 # docs/LEDGER.md in the kit would force it to carry a ledger it must not ship.
 if [ -f install.sh ] && [ -f VERSION ] && [ -d .claude/templates ]; then
-  ASSUME=".claude/templates/LEDGER.md .claude/templates/LESSONS.md .claude/templates/INTENT.md docs/plans/000-template.md scratch"
+  ASSUME=".claude/templates/LEDGER.md .claude/templates/LESSONS.md .claude/templates/INTENT.md .claude/templates/GLOSSARY-stakeholder-terms.md .claude/templates/preview-stakeholder-template.md docs/plans/000-template.md scratch"
 else
-  ASSUME="docs/kit/LEDGER.md docs/kit/LESSONS.md docs/plans/000-template.md scratch"
+  ASSUME="docs/kit/LEDGER.md docs/kit/LESSONS.md docs/plans/000-template.md docs/GLOSSARY-stakeholder-terms.md docs/templates/preview-stakeholder-template.md scratch"
 fi
 for p in $ASSUME; do
   [ -e "$p" ] && ok "$p" || bad "$p missing — a skill references it"

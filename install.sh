@@ -438,6 +438,8 @@ migrate_seed "$KIT/.claude/templates/LEDGER.md"  "docs/kit/LEDGER.md"  "docs/LED
 migrate_topic_ledgers
 migrate_seed "$KIT/.claude/templates/LESSONS.md" "docs/kit/LESSONS.md" "docs/LESSONS.md"
 seed         "$KIT/.claude/templates/INTENT.md"  "docs/INTENT.md"
+seed         "$KIT/.claude/templates/GLOSSARY-stakeholder-terms.md" "docs/GLOSSARY-stakeholder-terms.md"
+seed         "$KIT/.claude/templates/preview-stakeholder-template.md" "docs/templates/preview-stakeholder-template.md"
 if [ ! -e "$TARGET/scratch/.gitkeep" ]; then
   [ "$DRY" -eq 0 ] && { mkdir -p "$TARGET/scratch"; : > "$TARGET/scratch/.gitkeep"; }
   echo "  create    scratch/"

@@ -115,7 +115,10 @@ suite. Run it after an upgrade.
   the key being absent, leaves it on. `10-session-start.sh` announces the OFF
   state and is silent when on. Absent must mean on: `settings.json` is seeded
   once and never touched by an upgrade, so a key added to the kit today never
-  reaches a consumer who installed yesterday.
+  reaches a consumer who installed yesterday. `docs/GLOSSARY-stakeholder-
+  terms.md` and `docs/templates/preview-stakeholder-template.md` are seeded
+  the same way — once, never overwritten by an upgrade — so a consumer's own
+  edits to either survive.
 - Event log location: `METRICS_DIR`, default `.metrics`.
 - Retro nudge interval: `RETRO_NUDGE_SECONDS`, default 1800.
 - Turn one off: delete its block from the `hooks` key in `settings.json`.

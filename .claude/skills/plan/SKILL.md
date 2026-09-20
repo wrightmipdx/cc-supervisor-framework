@@ -72,10 +72,44 @@ Show the sponsor their own surface, in this order and contiguously:
 4. the risks, each with its tripwire
 5. any decision you need from them before dispatch
 
-Then the engineering, as detail below it: tasks, tiers, review lanes. That
-order is the point. Leading with tiers and lanes asks the sponsor to approve
-decisions in your column, and what comes back is a rubber stamp rather than a
-review — see `CLAUDE.md`, **The chair and the sponsor**.
+That order is the point. Leading with tiers and lanes asks the sponsor to
+approve decisions in your column, and what comes back is a rubber stamp
+rather than a review — see `CLAUDE.md`, **The chair and the sponsor**.
+
+**Branch on the plan's `audience:` field** (`docs/plans/000-template.md`
+frontmatter; missing field on a plan written before this line existed counts
+as `sponsor`, never as `engineering` and never as an error — an older plan
+should not lose the sponsor-facing behavior just because it predates the
+field):
+
+- `audience: engineering` — render the five items above exactly as written,
+  in the kit's own vocabulary. No translation.
+- `audience: sponsor` (the default) — render the same five facts, in the same
+  order, through `docs/GLOSSARY-stakeholder-terms.md` and the shape in
+  `docs/templates/preview-stakeholder-template.md`. This is a vocabulary
+  translation only — never drop, reorder, merge, or add to the five facts.
+  The mapping onto the template's own section names:
+
+  | Step 4 fact | Template section |
+  |---|---|
+  | goal | What we're delivering |
+  | decisions needed from them | Decisions already made (nothing further to approve here) |
+  | scope cuts + task breakdown | How the work is organized |
+  | risks and tripwires | Checks along the way |
+  | acceptance criteria | What "done" looks like |
+
+  Link the technical plan and ledger in the template's Appendix — that stays
+  the source of truth; the translated preview is a front door onto it, not a
+  replacement.
+
+  **No-glossary-row fallback:** a role or mechanic name with no row in
+  `docs/GLOSSARY-stakeholder-terms.md` renders literally, in the kit's own
+  word, rather than being omitted or blocking confirmation — the glossary is
+  maintained by hand (no lint yet), so a gap must be visible, not silent.
+
+Then the engineering, as detail below it: tasks, tiers, review lanes, in the
+kit's own vocabulary regardless of `audience:` — this detail is for whoever
+dispatches, not the sponsor.
 
 `ExitPlanMode` carries this to them for approval. Get a go before any dispatch.
 Flip `status` to `active` on approval.

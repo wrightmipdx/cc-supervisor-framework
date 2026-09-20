@@ -194,7 +194,7 @@ The leading `.claude/` matters — the script lives there, and shells do not
 search the current directory. `--static` skips the probe; `--probe` reprints
 just the probe brief.
 
-Then three things:
+Then four things:
 
 1. **Fill in `docs/INTENT.md`.** `CLAUDE.md` points there for product context
    and it ships as a template.
@@ -207,6 +207,11 @@ Then three things:
    worker reads the Supervisor constitution and starts trying to delegate the
    work it was hired to do. `CLAUDE.md` opens with a banner that covers this
    either way, but you want to know.
+4. **Extend `docs/GLOSSARY-stakeholder-terms.md` as needed.** Seeded alongside
+   `docs/templates/preview-stakeholder-template.md`; `plan/SKILL.md` step 4
+   uses both to translate a plan's five-fact confirmation for a plan with
+   `audience: sponsor` (the default). Add a row before a new role or mechanic
+   name ships in a sponsor-facing preview.
 
 ## When not to use it
 
