@@ -18,9 +18,9 @@ echo "--- worktrees ---"; .claude/scripts/worktrees.sh 2>&1
 echo "--- session ---"; .claude/scripts/metrics.sh 2>&1 | head -60
 ```
 
-Then read every live ledger — `docs/LEDGER.md` and any `docs/LEDGER-*.md`
+Then read every live ledger — `docs/kit/LEDGER.md` and any `docs/kit/LEDGER-*.md`
 that is not `*-archive.md`, which is the set the hooks count — plus the newest
-10 lines of `docs/LESSONS.md`, and any plan with `status: active`.
+10 lines of `docs/kit/LESSONS.md`, and any plan with `status: active`.
 
 ## Report
 

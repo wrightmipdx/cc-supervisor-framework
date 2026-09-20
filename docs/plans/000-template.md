@@ -1,6 +1,6 @@
 status: draft        # draft | active | done | abandoned
 date: <YYYY-MM-DD>
-ledger: docs/LEDGER.md
+ledger: docs/kit/LEDGER.md
 target version: <x.y.z>   # if the plan ships a release
 
 <!-- `status:` must stay on its own line at column 0: the SessionStart hook

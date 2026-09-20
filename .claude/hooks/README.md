@@ -21,7 +21,7 @@ Every hook sources what it needs and exits 0 if the source fails.
 
 `10`, `20`, `30`, `60` and `70` append one JSON line per event to
 `.metrics/session-<id>.jsonl`, which is gitignored.
-`.claude/scripts/metrics.sh` reads it and `docs/METRICS.md` documents it. The
+`.claude/scripts/metrics.sh` reads it and `docs/kit/METRICS.md` documents it. The
 Supervisor never writes a metric: bookkeeping in the chair's context costs
 chair tokens, which is the thing being measured.
 
@@ -66,7 +66,7 @@ the in-flight count.
 
 Through 0.3.3 the decrement happened at launch, and the in-flight count was
 therefore zero the entire time workers were running — `origin` read `ambiguous`
-zero times in 111 real events. `docs/METRICS.md` has the measurement.
+zero times in 111 real events. `docs/kit/METRICS.md` has the measurement.
 
 ## Related
 

@@ -143,7 +143,7 @@ which task it was given. The event log knows all three and nothing about cost.
 
 The launch receipt's one piece of real information is the `agentId`, and
 `dispatch_launched` captures it. That is what turns "how much opus" into "which
-opus" — the question `docs/ROUTING.md` says the budget rule actually needs, and
+opus" — the question `docs/kit/ROUTING.md` says the budget rule actually needs, and
 the one `/cost` can never answer, because the Supervisor, `architect` and
 `critic` all share a model.
 
@@ -360,7 +360,7 @@ It answered "which opus" on the first try.
 
 ### Recalibrating `ROUTING.md`
 
-`docs/ROUTING.md` still carries a 14/71/15 token split borrowed from a published
+`docs/kit/ROUTING.md` still carries a 14/71/15 token split borrowed from a published
 measurement of someone else's sessions. The first real consumer measured very
 differently — opus took roughly half of session cost, not a seventh of tokens —
 and the turn-budget effect that measurement revealed is not in that table at

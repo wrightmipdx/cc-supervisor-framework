@@ -101,7 +101,7 @@ construction, with no naming scheme to maintain or drift out of sync.
 | sonnet (cartographer, builder, designer, reviewer) | 1x | Briefed implementation, explanation, routine review | Unspecified problems |
 | opus (architect, critic) | ~5x sonnet | The hard 10 percent, risk-category review | Bulk work, routine edits, routine review |
 
-The opus row is the bill. At the 14/71/15 token split `docs/ROUTING.md` derives
+The opus row is the bill. At the 14/71/15 token split `docs/kit/ROUTING.md` derives
 from, that 14 percent on opus is roughly half the session's cost — so every opus
 dispatch is a deliberate purchase. Routine review belongs to `reviewer`;
 `critic` is for the categories `review` makes mandatory.

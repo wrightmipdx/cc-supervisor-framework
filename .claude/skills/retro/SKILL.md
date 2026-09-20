@@ -18,7 +18,7 @@ Close the session like an engineer.
 - Plan status: `done` when the criteria hold. `abandoned` with a one-line why
   if dropped. Never delete a plan. Future-you wants the map of what failed.
 
-## 2. Lessons → `docs/LESSONS.md`
+## 2. Lessons → `docs/kit/LESSONS.md`
 
 Newest first, maximum 5 per session. **One lesson is one bullet**, starting at
 column 0. It may wrap — indent the continuation lines and the SessionStart hook

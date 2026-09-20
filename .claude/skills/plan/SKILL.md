@@ -44,7 +44,7 @@ you are just enforcing it yourself.
   acceptance criterion gets one or gets cut — if nobody can say what "working"
   looks like, nobody will be able to tell whether it does. Include the negative
   case wherever one exists.
-- Requirements become checkboxes in `docs/LEDGER.md`. One ledger per
+- Requirements become checkboxes in `docs/kit/LEDGER.md`. One ledger per
   topic. Archive by renaming to `LEDGER-<topic>-archive.md`.
 - The ledger holds explicit requirements, implicit requirements, and edge cases.
   If the user said it, it is a line. If the code demands it, it is a line.

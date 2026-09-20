@@ -57,7 +57,7 @@ claim than cost, and it is the one to defend.
 
 Treat every number here as a target shape, not a promise. The published split
 came from a different codebase and task mix; calibrate yours over a few sessions
-and record it in `docs/LESSONS.md`.
+and record it in `docs/kit/LESSONS.md`.
 
 ### The counterpart the routing table assumes
 

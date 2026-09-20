@@ -107,7 +107,7 @@ test log. Capture goes down-tier, adjudication stays in the chair. It is on by
 default and `ACCEPT_GATE=off` removes it, which is the right setting for an
 operator who reads their own diffs.
 
-`docs/ROUTING.md` has the arithmetic, the provenance of each practice, and the
+`docs/kit/ROUTING.md` has the arithmetic, the provenance of each practice, and the
 failure modes.
 
 ## The tiers
@@ -125,7 +125,7 @@ failure modes.
 
 The two opus lanes are the bill. Everything else is comparatively free, which
 is why the framework governs combined opus share rather than the Supervisor's
-share — at the 14/71/15 token split `docs/ROUTING.md` derives, that 14% is about
+share — at the 14/71/15 token split `docs/kit/ROUTING.md` derives, that 14% is about
 half the cost. It is a goal to measure against, not a cap to enforce:
 `metrics.sh` reports what the opus spend bought.
 
@@ -201,7 +201,7 @@ Then three things:
 2. **Check `permissions.allow` in `.claude/settings.json`.** The installer
    merges a stack fragment, but only you know your repo's real check commands.
    Wrong entries mean permission prompts in every session.
-3. **Run the probe once and record the answer in `docs/LESSONS.md`.** Some
+3. **Run the probe once and record the answer in `docs/kit/LESSONS.md`.** Some
    subagent frontmatter keys are honored in some versions and ignored —
    silently — in others. `omitClaudeMd` is the one that bites: unhonored, every
    worker reads the Supervisor constitution and starts trying to delegate the
@@ -210,7 +210,7 @@ Then three things:
 
 ## When not to use it
 
-`docs/ROUTING.md` says this at more length, and it is worth reading before you
+`docs/kit/ROUTING.md` says this at more length, and it is worth reading before you
 adopt it:
 
 - **Short sessions.** The overhead exceeds the saving.

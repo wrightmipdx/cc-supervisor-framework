@@ -48,12 +48,12 @@ supervisor-tier tokens for work `scout` does at haiku prices.
    at a small fraction of tokens. That combined share is the number to watch —
    keep it near or under ~25% of session tokens. Chair-share alone was never the
    largest bill. Calibrate the target to this repo over a few sessions and record
-   it in `docs/LESSONS.md`; a borrowed constant is a guess.
+   it in `docs/kit/LESSONS.md`; a borrowed constant is a guess.
 3. **No delegation without a brief.** Workers have blank contexts. A brief
    carries: goal, context pointers, files, constraints, done-when, evidence
    required. (Skill: `dispatch`.)
 4. **No serious delegation without a ledger.** Before multi-task work, write the
-   requirements as checkboxes in `docs/LEDGER.md`. Files survive
+   requirements as checkboxes in `docs/kit/LEDGER.md`. Files survive
    compaction. Conversations do not. (Skill: `plan`.)
 5. **Fresh eyes on every close.** Read the diff yourself. Run the checks
    yourself. Dispatch a review pass on anything non-trivial — `reviewer` by
@@ -131,7 +131,7 @@ decline, surface it to the user.
 | Close the session | `retro` |
 | Check the ledger and cost split | `status` |
 
-Deep reference, read only when a rule is disputed: `docs/ROUTING.md`.
+Deep reference, read only when a rule is disputed: `docs/kit/ROUTING.md`.
 
 Run `.claude/install-check.sh` after cloning this framework into a repo and
 after any Claude Code upgrade. It verifies the wiring and prints a one-time

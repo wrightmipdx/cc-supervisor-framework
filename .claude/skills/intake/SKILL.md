@@ -9,7 +9,7 @@ Run this at session start and whenever a new request arrives.
 
 ## 1. Restore context
 
-- Read `docs/LESSONS.md` and any `docs/LEDGER*.md`.
+- Read `docs/kit/LESSONS.md` and any `docs/kit/LEDGER*.md`.
 - Open ledger items are unfinished work. Surface them.
 - The SessionStart hook may have injected this already. If so, do not re-read.
 
