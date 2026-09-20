@@ -31,9 +31,10 @@ not print.
 | `dispatch` | `20-pre-delegate.sh` | agent, tier, task id, brief size in bytes |
 | `dispatch_launched` | `60-dispatch-end.sh` (PostToolUse) | agent, `agent_id` — the join key |
 | `dispatch_end` | `60-dispatch-end.sh` (SubagentStop) | source, `duration_s` — real completion |
+| `direct_lane` | `25-direct-lane.sh` | task id, the chair's stated `reason` — logged the moment it runs `.claude/scripts/direct-lane.sh` instead of dispatching |
 | `commit_attempt` | `30-commit-gate.sh` | staged files/insertions/deletions, commit type, ledger open |
 | `commit_landed` | `70-commit-landed.sh` | HEAD, real files/insertions/deletions, commit type |
-| `gate_block` | `30-commit-gate.sh` | which rule blocked: `blind_add` or `blind_commit` |
+| `gate_block` | `30-commit-gate.sh` | which rule blocked: `blind_add`, `blind_commit` or `no_reason` |
 
 Every event also carries `event`, `ts`, `session` and `origin`.
 
@@ -52,12 +53,22 @@ No event carries a task id on a `commit_landed` — workers never commit
 (`dispatch` rule 6), so there is nothing analogous to `dispatch`'s `task` field
 to write there, and the 005 round considered and rejected a commit trailer for
 this reason (`docs/plans/005-traceability.md`, Decisions). What `metrics.sh`'s
-direct-lane block and `trace.sh`'s chair-conduct pricing both compute instead is
-**time order**: a `commit_landed` with no `dispatch` event since the previous
-`commit_landed` had no worker precede it. That establishes no worker preceded
-the commit — never who wrote the code, and never which task it closed. Do not
-read "direct-lane" or "chair window" as an exact join; both report surfaces say
-so in their own printed output, not only here.
+direct-lane block and `session-tokens.sh`'s chair-authored windows both compute
+is **time order**: a `commit_landed` with no `dispatch` event since the
+previous `commit_landed` had no worker precede it. That establishes no worker
+preceded the commit — never who wrote the code, and never which task it
+closed. Do not read "direct-lane" or "chair window" as an exact join; both
+report surfaces say so in their own printed output, not only here.
+
+Since plan 007, a `direct_lane` event in that same window adds one thing the
+pure time-order inference cannot: the chair's own stated `reason`, logged at
+the moment it chose not to dispatch (`docs/kit/LEDGER-007-chair-overhead.md`
+I2). `30-commit-gate.sh` requires a `dispatch` or a reasoned `direct_lane`
+event before a commit lands at all, so every commit in a session logged with
+this hook installed has one or the other — the "no worker preceded it"
+inference and the "here is why" reason are two different facts about the same
+window, and a report row can carry both, one, or (on a log written before this
+hook existed) neither.
 
 ### `origin`, and why some events refuse to name an agent
 

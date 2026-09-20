@@ -7,7 +7,8 @@ discipline alone does not survive.
 |---|---|---|
 | `10-session-start.sh` | SessionStart | Context loss across sessions and compactions |
 | `20-pre-delegate.sh` | PreToolUse `Agent\|Task` | Delegating without a ledger |
-| `30-commit-gate.sh` | PreToolUse `Bash` | Blind staging; closing with open requirements |
+| `25-direct-lane.sh` | PreToolUse `Bash` | Nothing — it only measures |
+| `30-commit-gate.sh` | PreToolUse `Bash` | Blind staging; closing with open requirements; a direct-lane commit with no reason logged |
 | `50-stop-retro.sh` | Stop | Ending a session without a retro |
 | `60-dispatch-end.sh` | SubagentStop, PostToolUse `Agent\|Task` | Nothing — it only measures |
 | | PostToolUse writes `dispatch_launched` (the `agent_id`); SubagentStop writes `dispatch_end` (real completion) | |
@@ -19,7 +20,7 @@ Every hook sources what it needs and exits 0 if the source fails.
 
 ## The event log
 
-`10`, `20`, `30`, `60` and `70` append one JSON line per event to
+`10`, `20`, `25`, `30`, `60` and `70` append one JSON line per event to
 `.metrics/session-<id>.jsonl`, which is gitignored.
 `.claude/scripts/metrics.sh` reads it and `docs/kit/METRICS.md` documents it. The
 Supervisor never writes a metric: bookkeeping in the chair's context costs

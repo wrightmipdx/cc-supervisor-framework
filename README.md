@@ -150,19 +150,20 @@ Loaded on demand, so the always-on context stays small.
 
 ## Hooks
 
-Instructions are advice; hooks are mechanism. Six of them, and only one blocks.
-See `.claude/hooks/README.md`.
+Instructions are advice; hooks are mechanism. Seven of them, and only one
+blocks. See `.claude/hooks/README.md`.
 
 | Hook | Fences |
 |---|---|
 | `10-session-start` | Context loss across sessions and compactions |
 | `20-pre-delegate` | Delegating multi-task work without a ledger |
-| `30-commit-gate` | Blind staging; closing with open requirements |
+| `25-direct-lane` | Nothing — it measures a direct-lane decision and its reason |
+| `30-commit-gate` | Blind staging; closing with open requirements; a direct-lane commit with no reason logged |
 | `50-stop-retro` | Shipping work without reconciling the ledger |
 | `60-dispatch-end` | Nothing — it measures what a dispatch returned |
 | `70-commit-landed` | Nothing — it measures what actually got committed |
 
-Their behavior is covered by 159 cases across five suites in
+Their behavior is covered by 207 cases across six suites in
 `.claude/hooks/test-*.sh`, which `install-check.sh` runs for you.
 
 ## Measurement
