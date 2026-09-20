@@ -71,6 +71,15 @@ if [ -x .claude/scripts/trace.sh ]; then
 else
   warn ".claude/scripts/trace.sh is missing — no requirement-trail report available"
 fi
+if [ -x .claude/scripts/worktrees.sh ]; then
+  if .claude/scripts/worktrees.sh --self-test >/dev/null 2>&1; then
+    ok "worktrees self-test passes"
+  else
+    bad "worktrees FAILS — run .claude/scripts/worktrees.sh --self-test"
+  fi
+else
+  warn ".claude/scripts/worktrees.sh is missing — an open worktree dispatch will not show in status"
+fi
 
 echo
 echo "== ledger parses"

@@ -14,6 +14,7 @@ echo "--- tree ---"; git status --short 2>/dev/null | head -20
 echo "--- last 5 commits ---"; git log --oneline -5 2>/dev/null
 echo "--- scratch ---"; ls -1 scratch 2>/dev/null | head -10
 echo "--- trace ---"; .claude/scripts/trace.sh 2>&1
+echo "--- worktrees ---"; .claude/scripts/worktrees.sh 2>&1
 echo "--- session ---"; .claude/scripts/metrics.sh 2>&1 | head -60
 ```
 
@@ -34,6 +35,11 @@ that is not `*-archive.md`, which is the set the hooks count — plus the newest
   for what governs these at session close)
 ## Tree
 - clean | N files uncommitted (list them)
+## Open worktrees   (from worktrees.sh — invisible to `git status` above)
+- N open dispatch(es), or none — one flagged "nothing to merge" past when a
+  dispatch should have finished means the merge-back steps in
+  dispatch/SKILL.md were not finished; "stale" means it needs `git worktree
+  prune`
 ## Scratch
 - N files (stale scratch means an unclosed task)
 ## Cost health   (from metrics.sh, not from memory)
