@@ -177,8 +177,10 @@ against worker turn. `.claude/scripts/trace.sh` reads a plan and its ledger
 instead of the event log — orphan criteria, unproven criteria, ledger items no
 task claims, untraced or unclosed tasks, deferrals with no recorded approval —
 so the sponsor can check the requirement trail without taking the chair's word
-for it. All three are self-testing (`--self-test`), and `install-check.sh` runs
-every one of them.
+for it. `.claude/scripts/worktrees.sh` lists any git worktree an isolated
+dispatch left open, since `git status` in the main tree cannot see one — see
+`dispatch/SKILL.md` "Merging a worktree dispatch back". All four are
+self-testing (`--self-test`), and `install-check.sh` runs every one of them.
 
 ## After installing
 
@@ -218,6 +220,24 @@ adopt it:
 
 The file set still works in all three cases. The routing table just keeps you
 honest.
+
+## Scope and direction
+
+- **Claude Code only.** This is not a portable pattern meant to also run on
+  Codex, Cursor, or Gemini. A feature that only earns its keep multi-platform
+  is out of scope.
+- **On-demand loading is the point, not incidental.** Ten skills, one loaded
+  per phase of the session, is what keeps the always-on context (`CLAUDE.md`)
+  small. Growing the skill or agent count without keeping it on-demand undoes
+  the saving that makes the rest of this worth running.
+- **Cost governance over scale.** The framework optimizes for a small,
+  well-understood opus share on one Supervisor holding judgment — not for
+  running many agents at once. A change that buys scale at the cost of that
+  discipline belongs in a fork, not here.
+- **Worth periodically checking against `claude-code-best-practice`** (the
+  public reference for where common Claude Code practice is heading) — to
+  diff the routing table and conventions against it occasionally, not to
+  chase feature parity with tools built for a different goal.
 
 ## Requirements
 
