@@ -16,6 +16,8 @@ discipline alone does not survive.
 
 Shared code lives in `lib/`: `ledger.sh` parses requirement checkboxes,
 `lessons.sh` reassembles wrapped lessons, `metrics.sh` writes the event log.
+`handoff.sh` caps and reports overflow for `retro`'s cross-plan
+`docs/kit/HANDOFF.md` the same way `lessons.sh` does for `LESSONS.md`.
 Every hook sources what it needs and exits 0 if the source fails.
 
 ## The event log
@@ -92,6 +94,17 @@ suite. Run it after an upgrade.
 - `.claude/hooks/test-commit-gate.sh` covers that behavior — 27 cases: blind
   staging, the commands a heredoc must not hide, and the false positives that an
   earlier substring-matching version denied. Run it after touching the gate.
+- `.claude/hooks/test-handoff-parse.sh` covers `lib/handoff.sh` — 27 cases.
+  `handoff_render`'s read path mirrors `test-lessons-parse.sh`'s: a wrapped
+  entry reassembled whole, an over-cap file (20 entries against the 12 cap)
+  and a character-cap file each reporting what they left out, and the
+  missing/empty-file edge cases. `handoff_write`'s write path is exercised
+  separately: a missing or empty draft leaves an existing destination
+  byte-identical and fails loudly instead of blanking it, a missing draft
+  with no destination present creates nothing, and the normal path writes
+  the rendered content, stays mode 644 (`mktemp` makes 0600 and `mv` would
+  carry that onto a committed doc), and fails clean when the destination's
+  directory is missing. Run it after touching either file.
 - The pre-delegate hook warns once per session, tracked by a flag file in
   `$TMPDIR` keyed on the session ID. It still logs every dispatch: logging
   happens before the early exits, not after them.

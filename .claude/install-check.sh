@@ -48,7 +48,8 @@ for f in .claude/hooks/*.sh; do
   grep -q "$(basename "$f")" .claude/settings.json \
     || warn "$f is not wired into settings.json — it will never fire. If you kept your own settings at install time, adopt .claude/settings.json.new"
 done
-for t in test-commit-gate test-ledger-parse test-lessons-parse test-metrics test-stop-retro; do
+for t in .claude/hooks/test-*.sh; do
+  t=$(basename "$t" .sh)
   [ -x ".claude/hooks/$t.sh" ] || continue
   if ".claude/hooks/$t.sh" >/dev/null 2>&1; then ok "$t passes"
   else bad "$t FAILS — run .claude/hooks/$t.sh"; fi

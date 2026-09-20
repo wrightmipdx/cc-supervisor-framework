@@ -40,6 +40,30 @@ every future session.
 
 - Update the active plan: tasks checked, plus a "Next steps" block written as
   the next session's opener.
+- Write `docs/kit/HANDOFF.md` — cross-plan, always overwritten, on every
+  close including a partial or abandoned one. This is not the per-plan "Next
+  steps" block above (that survives archiving as history; this file is only
+  the *current* cross-plan state, so `intake` need not find and open the most
+  recent plan file to get oriented). Write it from this same reconciliation
+  pass — never authored as a separate summary, or it drifts out of sync with
+  what step 1 just found. One bullet per plan with `status: active` or a
+  status that changed this session: the goal, what shipped, what is still
+  open and why, and the next step. A plan only partially done — abandoned, or
+  closed mid-way by the sponsor — still gets a bullet: the next session needs
+  "what is open and why" as much as "what shipped".
+
+  Draft the bullets into `scratch/handoff-draft.md`, then cap and overwrite
+  the real file exactly the way `LESSONS.md` is capped when read
+  (`.claude/hooks/lib/handoff.sh`'s `handoff_render`, same shape as
+  `lessons.sh`'s `lessons_render`: a 12-entry/4000-byte cap, and a trimmed
+  file says so instead of silently dropping the rest). Use `handoff_write`,
+  not `handoff_render` directly — it leaves `docs/kit/HANDOFF.md` untouched
+  and fails loudly if the draft is missing or empty, instead of blanking a
+  real handoff because the drafting step was skipped:
+
+  ```bash
+  . .claude/hooks/lib/handoff.sh && handoff_write scratch/handoff-draft.md docs/kit/HANDOFF.md
+  ```
 - Everything verified is committed. The tree is clean, or explicitly WIP with a
   note saying why.
 - One paragraph to the user: the goal, what shipped, what is open, the risks —
