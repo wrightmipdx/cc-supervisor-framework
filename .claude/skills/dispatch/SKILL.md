@@ -62,6 +62,37 @@ Stripping the judgment out is your whole job.
 8. **Refusals.** Re-run the task unchanged on another tier. Never reword to
    slide past a classifier. Two declines: tell the user.
 
+## Merging a worktree dispatch back
+
+The Agent call with `isolation: "worktree"` hands back a path and a branch —
+or neither, if the worker made no changes (it is auto-cleaned; there is
+nothing to merge or remove). What follows is the rest of the lifecycle rule 2
+starts.
+
+1. **Review it exactly like any other worker's tree.** `git -C <path> diff
+   <base>...HEAD` before touching anything else. A worktree does not skip
+   `review` — "never commit a worker's tree you have not read"
+   (`commit/SKILL.md`) applies unchanged.
+2. **Merge from the main worktree, fast-forward when you can.** `git merge
+   --ff-only <branch>`. Fall back to `--no-ff` only when a fast-forward is
+   impossible, and say why in the commit message.
+3. **Remove the worktree and the branch in the same step as the merge, in
+   that order.** `git worktree remove <path>` before `git branch -d
+   <branch>` — a branch checked out in a worktree cannot be deleted, so
+   removing the worktree first is not stylistic. A merged worktree left on
+   disk is a dangling reference nothing else here checks for.
+4. **Two workers whose file sets turned out to collide anyway** — the planning
+   failure rule 2 names — merge one at a time and resolve the conflict
+   yourself. Never take the second branch over the first without reading both.
+5. **Abandoned, twice-failed, or superseded** (see "Two strikes, escalate"):
+   remove the worktree and branch the same way as a merge. A worktree is
+   scratch space, not a place to leave unresolved work sitting.
+
+**The convention `worktrees.sh` and `status` key on:** the Supervisor itself
+never works from a secondary worktree — only an isolated dispatch creates one.
+So any worktree in this repo besides the primary one *is* an open dispatch, by
+construction, with no naming scheme to maintain or drift out of sync.
+
 ## Tier costs — the reason this exists
 
 | Tier | Approx cost | Use it for | Do not use it for |

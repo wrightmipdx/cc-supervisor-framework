@@ -8,7 +8,10 @@ One verified increment, one commit. Small diffs review well and revert well.
 
 ## Gate — all five
 
-1. `git status` shows nothing in the tree you cannot explain.
+1. `git status` shows nothing in the tree you cannot explain. Run from the
+   main worktree — a worktree-isolated dispatch (`dispatch/SKILL.md` "Merging
+   a worktree dispatch back") is invisible to this check until it is merged,
+   which is exactly why it gets merged and removed as one step, not left open.
 2. The done-when checks pass, and you saw them pass (`review`).
 3. The review pass is done in the lane `review` requires.
 4. The user is not holding commits mid-sequence.
@@ -59,6 +62,9 @@ the briefs are too large, which is a `plan` problem rather than a `commit` one.
 
 - Never commit a worker's tree you have not read.
 - Never commit with a failing check "to be fixed next commit".
+- Never leave a merged worktree dispatch's directory or branch behind —
+  `git worktree remove` and `git branch -d` happen in the same step as the
+  merge (`dispatch/SKILL.md`).
 
 ## The handoff
 
