@@ -58,75 +58,95 @@ strip_heredoc_bodies() {
 }
 CMD=$(printf '%s\n' "$CMD" | strip_heredoc_bodies)
 
-# One shell command per line, same operators 30-commit-gate.sh splits on --
-# applied to the UNSCRUBBED text, so a quoted `;` or `&&` inside the reason
-# argument can misfire this split. Known limit, same class as the commit
-# gate's heredoc-inside-a-quote note: matching only ever finds an extra
-# segment to inspect, it never invents a denial, and this hook never denies
-# anything regardless.
-SEGMENTS=$(printf '%s' "$CMD" \
-  | sed -e 's/&&/\n/g' -e 's/||/\n/g' -e 's/|/\n/g' -e 's/;/\n/g' -e 's/&/\n/g')
-
+# TOKENIZE THE WHOLE COMMAND FIRST, quote-aware, THEN look for operators --
+# not the other way around. An earlier version split on `;`/`&&`/`|`/`&` as
+# raw text before any tokenizing, so a semicolon or ampersand INSIDE the
+# reason argument's own quotes (ordinary English punctuation -- "did X, then
+# Y; verified Z") silently truncated the reason to whatever came before it,
+# logging an event this hook itself could not tell was wrong. Reproduced live
+# in this very session (2026-09-20): a reason containing "; verified" against
+# the previous version logged `reason:""`, which then correctly, but
+# needlessly, tripped 30-commit-gate.sh's DENY_NO_REASON.
+#
+# `xargs -n1` tokenizes the ENTIRE command respecting quotes -- a `;` inside
+# a quoted string is just a character to it, never a separator, because xargs
+# has no concept of shell operators at all. So: tokenize everything first,
+# then walk the token stream ourselves looking for a token that IS (exactly)
+# one of the operator strings -- which only happens when that operator
+# appeared OUTSIDE any quoting, with whitespace around it, in the original
+# command. `eval` is never used: it would re-expand any $(...)/backtick in
+# the command text a second time, here, before the real tool call runs it.
+#
+# Known limits, same shape as 30-commit-gate.sh's own heredoc-inside-a-quote
+# note: an operator glued to adjacent text with NO surrounding whitespace
+# (`cmd1;cmd2`, no spaces) is not isolated by xargs into its own token, so it
+# is not recognized as a boundary here. `xargs` also strips quoting, so a
+# task/reason argument whose ENTIRE content is one of the operator strings
+# (a reason of literally `";"`, nothing else) is indistinguishable from a
+# bare unquoted operator and truncates the reason there -- not realistic
+# chair prose, but a real edge. A chair-typed command chaining two commands
+# always has spaces around the operator; this hook never denies anything
+# regardless, so either miss only ever means one MORE token gets swept into
+# a reason, or a reason cut short -- never a false denial.
 MARKER='.claude/scripts/direct-lane.sh'
-
-# Token-based classification, mirroring 30-commit-gate.sh's classify(): word-
-# split the segment (globbing off) and check that the marker is the actual
-# command being invoked -- not merely present somewhere in the text.
-# 30-commit-gate.sh's own header documents fixing this exact bug once: raw
-# substring matching denied (there, blocked; here, would falsely log) any
-# command that merely MENTIONED a phrase -- a grep, a cat, an echo, doc text.
-matches_marker() (
-  set -f            # no globbing while we word-split
-  # shellcheck disable=SC2086
-  set -- $1
-  [ $# -eq 0 ] && return 1
-
-  # Skip leading VAR=value assignments, same as classify().
-  while [ $# -gt 0 ]; do
-    case "$1" in
-      [A-Za-z_]*=*) shift ;;
-      *) break ;;
-    esac
-  done
-  [ $# -eq 0 ] && return 1
-
-  # The first real word must BE the marker script (bare, or path-qualified),
-  # not just contain its text anywhere in the segment.
+is_operator() {
   case "$1" in
-    "$MARKER"|*"/$MARKER") return 0 ;;
+    ';'|'&&'|'||'|'|'|'&') return 0 ;;
     *) return 1 ;;
   esac
-)
+}
 
-while IFS= read -r seg; do
-  [ -z "${seg// /}" ] && continue
-  matches_marker "$seg" || continue
-
-  # Everything after the marker path is the script's own arguments. Safe to
-  # locate by substring here: matches_marker already confirmed the first real
-  # word IS (or path-ends-with) $MARKER, so $MARKER is guaranteed to occur in
-  # $seg at that word's position.
-  rest="${seg#*"$MARKER"}"
-
-  # Quote-aware tokenizing without shell evaluation. `eval` would re-expand
-  # any $(...)/backticks in the command text -- text about to run for real
-  # anyway -- a second time, here, before the actual tool call. `xargs`
-  # splits on quotes and whitespace like a shell does but never expands or
-  # executes anything.
-  TOKENS=$(printf '%s\n' "$rest" | xargs -n1 2>/dev/null || true)
-  TASK=$(printf '%s\n' "$TOKENS" | head -1)
-  REASON=$(printf '%s\n' "$TOKENS" | tail -n +2 | tr '\n' ' ' | sed -e 's/[[:space:]]*$//')
-
-  # Log something even with no reason argument at all (task-only, or no
-  # arguments) -- T3's gate depends on `reason` being non-empty to allow a
-  # commit, so a dropped event here would silently fail differently than a
-  # denied one.
-  METRICS_ORIGIN=main metrics_event direct_lane "$(jq -cn \
-    --arg task "${TASK:-}" --arg reason "${REASON:-}" \
-    '{task:(if $task == "" then null else $task end), reason:$reason}' \
-    2>/dev/null || printf '{}')"
+TOKENS_RAW=$(printf '%s\n' "$CMD" | xargs -n1 2>/dev/null || true)
+TOK=()
+while IFS= read -r t; do
+  TOK+=("$t")
 done <<EOF
-$SEGMENTS
+$TOKENS_RAW
 EOF
+
+N=${#TOK[@]}
+I=0
+SEG_START=1
+while [ "$I" -lt "$N" ]; do
+  T="${TOK[$I]}"
+  if is_operator "$T"; then
+    SEG_START=1
+    I=$((I + 1))
+    continue
+  fi
+  if [ "$SEG_START" -eq 1 ]; then
+    # Skip leading VAR=value assignments, same as 30-commit-gate.sh's
+    # classify() does for a segment's own leading words.
+    case "$T" in
+      [A-Za-z_]*=*) I=$((I + 1)); continue ;;
+    esac
+    SEG_START=0
+  fi
+  case "$T" in
+    "$MARKER"|*"/$MARKER")
+      TASK="${TOK[$((I + 1))]:-}"
+      REASON=""
+      J=$((I + 2))
+      while [ "$J" -lt "$N" ]; do
+        RT="${TOK[$J]}"
+        is_operator "$RT" && break
+        REASON="${REASON}${REASON:+ }${RT}"
+        J=$((J + 1))
+      done
+      # Log something even with no reason argument at all (task-only, or no
+      # arguments) -- T3's gate depends on `reason` being non-empty to allow
+      # a commit, so a dropped event here would silently fail differently
+      # than a denied one.
+      METRICS_ORIGIN=main metrics_event direct_lane "$(jq -cn \
+        --arg task "${TASK:-}" --arg reason "${REASON:-}" \
+        '{task:(if $task == "" then null else $task end), reason:$reason}' \
+        2>/dev/null || printf '{}')"
+      I="$J"
+      SEG_START=1
+      continue
+      ;;
+  esac
+  I=$((I + 1))
+done
 
 exit 0

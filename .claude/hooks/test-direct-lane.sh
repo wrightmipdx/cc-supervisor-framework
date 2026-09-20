@@ -53,6 +53,35 @@ eq "session id is carried" sessA \
   "$(events | jq -r 'select(.event=="direct_lane") | .session' | head -1)"
 
 echo
+echo "--- regression: a reason containing shell-operator punctuation must not be"
+echo "    truncated (reproduced live: 2026-09-20, a semicolon in ordinary prose"
+echo "    silently emptied the reason and tripped the commit gate needlessly)"
+CMD='.claude/scripts/direct-lane.sh "T9b" "hook counts were stale, ledger I9; verified before fixing"'
+OUT=$(hook "$(payload sessOp "$CMD")"); RC=$?
+eq "hook exits 0" 0 "$RC"
+eq "exactly one direct_lane event" 1 "$(events | jq -r 'select(.event=="direct_lane" and .session=="sessOp")' | jq -s 'length')"
+eq "the semicolon inside the quoted reason survives intact" \
+  "hook counts were stale, ledger I9; verified before fixing" \
+  "$(events | jq -r 'select(.event=="direct_lane" and .session=="sessOp") | .reason' | head -1)"
+
+CMD2='.claude/scripts/direct-lane.sh "T9c" "tightened the check & re-ran the suite"'
+OUT2=$(hook "$(payload sessOp2 "$CMD2")"); RC2=$?
+eq "hook exits 0 (ampersand case)" 0 "$RC2"
+eq "the ampersand inside the quoted reason survives intact too" \
+  "tightened the check & re-ran the suite" \
+  "$(events | jq -r 'select(.event=="direct_lane" and .session=="sessOp2") | .reason' | head -1)"
+
+echo
+echo "--- a genuine chained command after the marker still stops reason collection"
+echo "    at the real (whitespace-separated, unquoted) operator"
+CMD3='.claude/scripts/direct-lane.sh "T9d" "a real reason" && echo unrelated-tail'
+OUT3=$(hook "$(payload sessChain "$CMD3")"); RC3=$?
+eq "hook exits 0" 0 "$RC3"
+eq "the reason stops at the real && operator, not swept up" \
+  "a real reason" \
+  "$(events | jq -r 'select(.event=="direct_lane" and .session=="sessChain") | .reason' | head -1)"
+
+echo
 echo "--- X5: no reason argument still logs, not silently dropped"
 hook "$(payload sessB '.claude/scripts/direct-lane.sh T3')" >/dev/null
 eq "an event was still written" 1 "$(events | jq -r 'select(.event=="direct_lane" and .session=="sessB")' | jq -s 'length')"
