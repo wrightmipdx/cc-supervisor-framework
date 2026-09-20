@@ -40,6 +40,39 @@ run() {
   fi
 }
 
+# Appends one fixture event straight to the shared session log, the same log
+# `run`'s hook invocations read and write. The commit gate now denies any
+# commit with no dispatch/reasoned-direct_lane event since the last
+# commit_landed (or session start) — every case below that expects ALLOW on
+# an actual `git commit` needs one of these first, since `run()` shares one
+# log across the whole file with no reset between cases (see METRICS_TMP
+# above).
+seed() {
+  local event="$1"
+  mkdir -p "$METRICS_DIR"
+  # Whether `reason` is written at all is decided by ARGUMENT COUNT, not by
+  # whether the string happens to be empty — production (25-direct-lane.sh)
+  # always writes a `reason` key, even an empty one, so `seed direct_lane ""`
+  # must produce {reason:""} on disk, not silently omit the key the way a
+  # string-emptiness check would.
+  if [ "$#" -ge 2 ]; then
+    jq -cn --arg e "$event" --arg r "$2" \
+      '{event:$e, ts:"1970-01-01T00:00:00Z", session:"test", reason:$r}' \
+      >> "$METRICS_DIR/session-test.jsonl"
+  else
+    jq -cn --arg e "$event" \
+      '{event:$e, ts:"1970-01-01T00:00:00Z", session:"test"}' \
+      >> "$METRICS_DIR/session-test.jsonl"
+  fi
+}
+
+# Appends a raw, non-JSON (or otherwise malformed) line straight to the log,
+# to prove the gate skips it rather than choking on it.
+seed_raw() {
+  mkdir -p "$METRICS_DIR"
+  printf '%s\n' "$1" >> "$METRICS_DIR/session-test.jsonl"
+}
+
 echo "--- blind staging must be blocked"
 run DENY  'git add -A'
 run DENY  'git add --all'
@@ -59,18 +92,23 @@ run ALLOW 'git add .gitignore'
 run ALLOW 'git add ./src/foo.ts'
 run ALLOW 'git add .claude/hooks/30-commit-gate.sh'
 run ALLOW 'git add docs/kit/LEDGER.md docs/kit/LESSONS.md'
+seed dispatch
 run ALLOW 'git commit -m "fix: tighten the gate"'
+seed dispatch
 run ALLOW 'git commit --amend --no-edit'
+seed dispatch
 run ALLOW 'git commit --allow-empty -m "ci: trigger"'
 
 echo
 echo "--- text that merely mentions the phrase must be allowed"
+seed dispatch
 run ALLOW 'git commit -m "docs: explain why git add -A is blocked"'
 run ALLOW 'grep -rn "git add -A" .claude/'
 run ALLOW 'rg "git commit -a" docs/'
 run ALLOW 'cat > notes.md <<EOF
 git add -A
 EOF'
+seed dispatch
 run ALLOW 'git commit -m "$(cat <<'"'"'EOF'"'"'
 fix: thing
 
@@ -91,6 +129,51 @@ git commit -am "wip"'
 run DENY  'git add -A <<EOF
 body
 EOF'
+
+echo
+echo "--- the reason gate: a direct-lane commit needs a stated reason first"
+seed commit_landed
+run DENY  'git commit -m "no dispatch, no direct_lane, nothing precedes this"'
+
+seed commit_landed
+seed direct_lane
+run DENY  'git commit -m "a direct_lane event exists but has no reason key at all"'
+
+seed commit_landed
+seed direct_lane ""
+run DENY  'git commit -m "a direct_lane event has reason explicitly set to empty string"'
+
+seed commit_landed
+seed direct_lane "   "
+run DENY  'git commit -m "a direct_lane event has a whitespace-only reason"'
+
+seed commit_landed
+seed direct_lane "single-line config tweak, tests exist"
+run ALLOW 'git commit -m "a direct_lane event with a real reason precedes it"'
+
+seed commit_landed
+seed dispatch
+run ALLOW 'git commit -m "a dispatch precedes this commit"'
+
+echo
+echo "--- commit_landed resets the window: each commit needs its own event (X4)"
+seed commit_landed
+seed dispatch
+run ALLOW 'git commit -m "first commit in the pair, dispatch precedes it"'
+seed commit_landed
+run DENY  'git commit -m "second commit, nothing precedes it since the reset"'
+
+echo
+echo "--- a malformed line in the log must not wedge the gate for the rest of the session"
+seed commit_landed
+seed_raw 'not json'
+seed dispatch
+run ALLOW 'git commit -m "a junk non-JSON line before a valid dispatch must not break the gate"'
+
+seed commit_landed
+seed_raw '5'
+seed dispatch
+run ALLOW 'git commit -m "a bare non-object JSON line must not break the gate either"'
 
 echo
 # This run must leave the repo's own log exactly as it found it, and must have

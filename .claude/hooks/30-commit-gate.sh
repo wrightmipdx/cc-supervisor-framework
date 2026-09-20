@@ -51,6 +51,7 @@ deny() {
 
 DENY_ADD="SUPERVISOR: blind staging is blocked. Stage only this increment's files by path (git add path/to/file). See the commit skill."
 DENY_COMMIT="SUPERVISOR: that commit stages everything tracked. Stage this increment's files by path, then commit without it. See the commit skill."
+DENY_NO_REASON="SUPERVISOR: no dispatch and no reasoned direct-lane event precede this commit. Run .claude/scripts/direct-lane.sh \"<task>\" \"<reason>\" first, or dispatch instead. See the commit skill."
 
 # --- normalize ---------------------------------------------------------------
 # Drop heredoc BODIES, not the rest of the command. An earlier version cut
@@ -167,8 +168,50 @@ done <<EOF
 $SEGMENTS
 EOF
 
-# --- open ledger on commit ---------------------------------------------------
+# --- reasoned direct lane, or a dispatch, must precede the commit -----------
+# Mirrors the "seen since last commit_landed" idiom session-tokens.sh's
+# chair-window reduce already uses (session-tokens.sh:572-586): scan forward,
+# a commit_landed resets the window, a dispatch or a direct_lane event with a
+# non-empty reason opens it. Denied here, before commit_attempt is logged
+# below, the same way DENY_ADD/DENY_COMMIT are.
+#
+# KNOWN INTERACTION, not a defect introduced here: 70-commit-landed.sh emits
+# commit_landed on ANY HEAD movement (checkout, rebase, reset, merge, pull),
+# not only a commit that this gate itself approved. A branch switch between a
+# dispatch and the eventual commit therefore also resets this window, and a
+# legitimate commit could be denied even though a dispatch really did precede
+# it in wall-clock time. A tighter fix — only reset on a commit_landed that
+# itself follows a commit_attempt — is a plausible follow-up, not done here.
 [ "$IS_COMMIT" -eq 1 ] || exit 0
+
+LOG="$(_metrics_log)"
+SEEN=""
+if [ -r "$LOG" ]; then
+  # jq -rn -R + fromjson? reads the log LINE BY LINE and skips any line that
+  # is not valid JSON, rather than `jq -s` slurping the whole file into one
+  # array and aborting entirely on the FIRST bad line (a hook killed mid-
+  # append leaves a truncated line; that must never wedge every commit for
+  # the rest of the session). A line that parses but is not a JSON object
+  # (a bare number, a bare string) is also skipped, not treated as a fatal
+  # type error, for the same reason.
+  SEEN=$(jq -rn -R '
+    reduce (inputs | fromjson?) as $e ("none";
+      if ($e | type) != "object" then .
+      elif $e.event == "commit_landed" then "none"
+      elif $e.event == "dispatch" then "dispatch"
+      elif $e.event == "direct_lane"
+        and (($e.reason // "" | tostring | gsub("^\\s+|\\s+$"; "")) | length) > 0
+        then "direct_lane"
+      else . end)
+  ' "$LOG" 2>/dev/null) || SEEN=""
+fi
+# Fail open: an absent/unreadable log, or any other jq failure, must never
+# itself become a deny — 10-session-start.sh guarantees the log exists in a
+# real session, so an empty SEEN here means our own read broke, not that the
+# session truly has no dispatch/direct_lane. Only a genuine "none" — the
+# reduce ran to completion and found none — is denied.
+[ -z "$SEEN" ] && exit 0
+[ "$SEEN" = "none" ] && deny "$DENY_NO_REASON" no_reason
 
 OPEN=$(ledger_total_open)
 
