@@ -72,8 +72,8 @@ framework_paths() {
   { (cd "$KIT" && find .claude/agents .claude/skills .claude/hooks .claude/scripts \
         .claude/settings.examples -type f 2>/dev/null)
     echo ".claude/install-check.sh"
-    echo "docs/METRICS.md"
-    echo "docs/ROUTING.md"
+    echo "docs/kit/METRICS.md"
+    echo "docs/kit/ROUTING.md"
     echo "docs/plans/000-template.md"
   } | sort -u
 }
@@ -383,11 +383,61 @@ rm -f "$LAYER" "$MERGED"
 seed() { [ -e "$TARGET/$2" ] && return 0
          [ "$DRY" -eq 0 ] && { mkdir -p "$(dirname "$TARGET/$2")"; cp "$1" "$TARGET/$2"; }
          echo "  seed      $2"; }
+# Consumer-owned files that moved location in this release: migrate the old
+# copy if the consumer still has it there. Seed fresh only if this is a
+# genuine first install (MODE=install means nothing of ours exists yet, so
+# there is nothing to migrate -- a same-named file in that case is the
+# consumer's own and must not be touched) and neither the new nor the old
+# path exists.
+migrate_seed() {   # migrate_seed <template-src> <new-rel> <old-rel>
+  [ -e "$TARGET/$2" ] && { [ "$MODE" != install ] && [ -e "$TARGET/$3" ] \
+      && echo "  note      $3 exists alongside $2 -- left in place, not read by any hook"; return 0; }
+  if [ "$MODE" != install ] && [ -e "$TARGET/$3" ]; then
+    if [ "$DRY" -eq 0 ]; then
+      if mkdir -p "$(dirname "$TARGET/$2")" && mv "$TARGET/$3" "$TARGET/$2"; then
+        echo "  migrate   $3 -> $2"
+      else
+        echo "  FAILED    migrate $3 -> $2" >&2
+      fi
+    else
+      echo "  migrate   $3 -> $2"
+    fi
+    return 0
+  fi
+  [ "$DRY" -eq 0 ] && { mkdir -p "$(dirname "$TARGET/$2")"; cp "$1" "$TARGET/$2"; }
+  echo "  seed      $2"
+}
+# Topic ledgers and their archives (docs/LEDGER-<topic>.md,
+# docs/LEDGER-<topic>-archive.md): never seeded -- there is no template for a
+# topic that doesn't exist yet -- only migrated, and only on an upgrade (not
+# a from-scratch install, for the same reason migrate_seed guards on MODE).
+migrate_topic_ledgers() {
+  [ "$MODE" = install ] && return 0
+  local f base
+  for f in "$TARGET"/docs/LEDGER-*.md; do
+    [ -e "$f" ] || continue
+    base="$(basename "$f")"
+    if [ -e "$TARGET/docs/kit/$base" ]; then
+      echo "  note      docs/$base exists alongside docs/kit/$base -- left in place, not read by any hook"
+      continue
+    fi
+    if [ "$DRY" -eq 0 ]; then
+      if mkdir -p "$TARGET/docs/kit" && mv "$f" "$TARGET/docs/kit/$base"; then
+        echo "  migrate   docs/$base -> docs/kit/$base"
+      else
+        echo "  FAILED    migrate docs/$base -> docs/kit/$base" >&2
+      fi
+    else
+      echo "  migrate   docs/$base -> docs/kit/$base"
+    fi
+  done
+}
 echo
 echo "yours — seeded once, never touched again"
-seed "$KIT/.claude/templates/LEDGER.md"  "docs/LEDGER.md"
-seed "$KIT/.claude/templates/LESSONS.md" "docs/LESSONS.md"
-seed "$KIT/.claude/templates/INTENT.md"  "docs/INTENT.md"
+migrate_seed "$KIT/.claude/templates/LEDGER.md"  "docs/kit/LEDGER.md"  "docs/LEDGER.md"
+migrate_topic_ledgers
+migrate_seed "$KIT/.claude/templates/LESSONS.md" "docs/kit/LESSONS.md" "docs/LESSONS.md"
+seed         "$KIT/.claude/templates/INTENT.md"  "docs/INTENT.md"
 if [ ! -e "$TARGET/scratch/.gitkeep" ]; then
   [ "$DRY" -eq 0 ] && { mkdir -p "$TARGET/scratch"; : > "$TARGET/scratch/.gitkeep"; }
   echo "  create    scratch/"
@@ -407,7 +457,7 @@ ignore_once() {   # ignore_once <grep-pattern> <label> <text-with-escapes>
 ignore_once 'scratch/\*' 'scratch' \
   '\n# Supervisor framework: shared Supervisor/worker workspace, never committed.\nscratch/*\n!scratch/.gitkeep\n'
 ignore_once '^\.metrics/' 'metrics' \
-  '\n# Supervisor framework: hook-written session event log. See docs/METRICS.md.\n.metrics/\n'
+  '\n# Supervisor framework: hook-written session event log. See docs/kit/METRICS.md.\n.metrics/\n'
 
 # --- CLAUDE.md ----------------------------------------------------------------
 echo
@@ -510,7 +560,7 @@ fi
 echo "Next:"
 echo "  1. git diff — read what changed before you commit it."
 echo "  2. Fill in docs/INTENT.md if you have not. CLAUDE.md points there."
-echo "  3. Run the probe once, record it in docs/LESSONS.md:"
+echo "  3. Run the probe once, record it in docs/kit/LESSONS.md:"
 echo "       .claude/install-check.sh --probe"
 echo
 rm -f "$PLAN"

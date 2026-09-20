@@ -7,7 +7,7 @@
 #   STATIC  — verified here and now (deps, wiring, dangling references)
 #   PROBE   — cannot be verified by a script, because only the harness knows
 #             whether it honors a frontmatter key. Printed as a brief you
-#             dispatch once, then record the answer in docs/LESSONS.md.
+#             dispatch once, then record the answer in docs/kit/LESSONS.md.
 
 set -uo pipefail
 cd "$(dirname "$0")/.." || exit 1
@@ -186,7 +186,7 @@ echo "== paths the skills assume"
 if [ -f install.sh ] && [ -f VERSION ] && [ -d .claude/templates ]; then
   ASSUME=".claude/templates/LEDGER.md .claude/templates/LESSONS.md .claude/templates/INTENT.md docs/plans/000-template.md scratch"
 else
-  ASSUME="docs/LEDGER.md docs/LESSONS.md docs/plans/000-template.md scratch"
+  ASSUME="docs/kit/LEDGER.md docs/kit/LESSONS.md docs/plans/000-template.md scratch"
 fi
 for p in $ASSUME; do
   [ -e "$p" ] && ok "$p" || bad "$p missing — a skill references it"
@@ -247,7 +247,7 @@ cat <<DEPROBE
 
   If that directory does not exist, this version writes transcripts elsewhere or
   not at all, and metrics.sh reports token cost as UNAVAILABLE with the path it
-  looked in. Record what you see in docs/LESSONS.md, and re-probe after a Claude
+  looked in. Record what you see in docs/kit/LESSONS.md, and re-probe after a Claude
   Code upgrade — this is the one part of the instrument that rests on a path and
   a schema the harness owns.
 DEPROBE
@@ -259,7 +259,7 @@ cat <<PROBE
   An unsupported key is IGNORED SILENTLY. omitClaudeMd is the one that bites:
   if it is not honored, every worker reads the Supervisor constitution.
 
-  Dispatch this once, to builder, and record the answer in docs/LESSONS.md:
+  Dispatch this once, to builder, and record the answer in docs/kit/LESSONS.md:
 
     Goal:      Report what is in your context, verbatim, without editing files.
     Done when: You have answered all four:
@@ -282,7 +282,7 @@ cat <<PROBE
   normally. Do not strip the missing names from the definitions; another
   session will have them. Just make sure briefs say to search with Bash
   'grep'/'find' rather than naming the Grep tool, and note it in
-  docs/LESSONS.md. Re-probe after a Claude Code upgrade.
+  docs/kit/LESSONS.md. Re-probe after a Claude Code upgrade.
 PROBE
 
 echo

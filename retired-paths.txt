@@ -12,3 +12,5 @@
 # <path>  <release that dropped it>
 .claude/agents/explore.md               0.2.0
 .claude/hooks/40-supervisor-budget.sh   0.2.0
+docs/METRICS.md                         0.7.0
+docs/ROUTING.md                         0.7.0

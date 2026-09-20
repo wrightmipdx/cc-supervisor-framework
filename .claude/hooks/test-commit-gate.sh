@@ -58,7 +58,7 @@ echo "--- explicit paths must be allowed (regression: substring match)"
 run ALLOW 'git add .gitignore'
 run ALLOW 'git add ./src/foo.ts'
 run ALLOW 'git add .claude/hooks/30-commit-gate.sh'
-run ALLOW 'git add docs/LEDGER.md docs/LESSONS.md'
+run ALLOW 'git add docs/kit/LEDGER.md docs/kit/LESSONS.md'
 run ALLOW 'git commit -m "fix: tighten the gate"'
 run ALLOW 'git commit --amend --no-edit'
 run ALLOW 'git commit --allow-empty -m "ci: trigger"'

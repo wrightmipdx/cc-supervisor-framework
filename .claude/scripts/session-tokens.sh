@@ -297,8 +297,8 @@ fi
 # --- resolve the session -----------------------------------------------------
 [ -d "$TRANSCRIPTS" ] || unavailable "no transcript directory for this project at
    $TRANSCRIPTS
-   Token cost is read from the local session transcript (docs/METRICS.md, route
-   3). Nothing else in this report depends on it."
+   Token cost is read from the local session transcript (docs/kit/METRICS.md,
+   route 3). Nothing else in this report depends on it."
 
 # Same trap as metrics.sh, one layer down: a `/clear` leaves a transcript with
 # no assistant turns at all, and it is newer than the one you worked in. Pick
