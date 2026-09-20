@@ -174,9 +174,10 @@ jobs:
 
           ./install.sh "$T" --stack none
 
-          AFTER=$(sha256sum "$T/docs/LEDGER.md" | awk '{print $1}')
+          AFTER=$(sha256sum "$T/docs/kit/LEDGER.md" | awk '{print $1}')
           [ "$BEFORE" = "$AFTER" ] || { echo "the upgrade modified a populated ledger"; exit 1; }
-          test -s "$T/docs/LESSONS.md" || { echo "the upgrade emptied LESSONS.md"; exit 1; }
+          [ -e "$T/docs/LEDGER.md" ] && { echo "the upgrade left a stale copy at the old flat path"; exit 1; }
+          test -s "$T/docs/kit/LESSONS.md" || { echo "the upgrade emptied LESSONS.md"; exit 1; }
 
           # After: it reads both items, and only the open ones.
           out=$(CLAUDE_PROJECT_DIR="$T" "$T/.claude/hooks/10-session-start.sh" </dev/null | jq -r '.hookSpecificOutput.additionalContext // ""')
