@@ -188,7 +188,10 @@ unverified knob is a knob you are guessing about.
   the key works — it costs six lines and survives an upgrade that the probe
   result does not.
 - `isolation: "worktree"` on an Agent call gives the worker its own git
-  worktree. It is what makes parallel implementers safe; see `dispatch`.
+  worktree. It is what makes parallel implementers safe; see `dispatch`, which
+  also carries the merge-back steps and the convention `worktrees.sh` and
+  `status` use to find an open one — the Supervisor itself never works from a
+  secondary worktree, so any worktree found besides the primary is a dispatch.
 
 ## Subagent files and reload
 
