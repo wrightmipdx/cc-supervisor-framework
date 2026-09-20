@@ -148,7 +148,7 @@ $(ledger_files)
 EOF
   fi
   if command -v lessons_count >/dev/null 2>&1; then
-    lessons=$(lessons_count "${DOCS:-docs}/LESSONS.md")
+    lessons=$(lessons_count "${KIT_DOCS:-docs/kit}/LESSONS.md")
   fi
   jq -cn --argjson o "$open" --argjson d "$verified" --argjson f "$defer" --argjson l "$lessons" \
      '{ledger_open:$o, ledger_verified:$d, ledger_deferred:$f, lessons:$l}' 2>/dev/null || printf '{}'

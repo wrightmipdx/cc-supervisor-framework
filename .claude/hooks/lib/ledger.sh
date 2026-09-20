@@ -28,7 +28,7 @@ LEDGER_RE_ANY='^[[:space:]]*-[[:space:]]+([A-Za-z]+[0-9]+[[:space:]]+)?\[[ x~]\]
 # Every live ledger: docs/LEDGER.md plus docs/LEDGER-*.md, archives excluded.
 # Prints nothing at all when there is no ledger, which callers treat as zero.
 ledger_files() {
-  local d="${DOCS:-docs}" f
+  local d="${KIT_DOCS:-docs/kit}" f
   for f in "$d"/LEDGER.md "$d"/LEDGER-*.md; do
     [ -f "$f" ] || continue
     case "$f" in *-archive.md) continue ;; esac

@@ -8,7 +8,7 @@
 
 set -uo pipefail
 
-DOCS="${DOCS:-docs}"
+KIT_DOCS="${KIT_DOCS:-docs/kit}"
 ROOT="${CLAUDE_PROJECT_DIR:-.}"
 # Resolve the library before cd, so it is found however we were invoked.
 LIB="$(cd "$(dirname "$0")" 2>/dev/null && pwd)/lib"

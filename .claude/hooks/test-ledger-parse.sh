@@ -80,15 +80,15 @@ eq "prose: verified"  0 "$(ledger_count_done "$TMP/docs/LEDGER-prose.md")"
 
 echo
 echo "--- file selection"
-eq "archives excluded" "" "$(DOCS=$TMP/docs ledger_files | grep archive || true)"
-eq "live ledgers found" 4 "$(DOCS=$TMP/docs ledger_files | wc -l | tr -d ' ')"
-eq "total open across files" 6 "$(DOCS=$TMP/docs ledger_total_open)"
+eq "archives excluded" "" "$(KIT_DOCS=$TMP/docs ledger_files | grep archive || true)"
+eq "live ledgers found" 4 "$(KIT_DOCS=$TMP/docs ledger_files | wc -l | tr -d ' ')"
+eq "total open across files" 6 "$(KIT_DOCS=$TMP/docs ledger_total_open)"
 
 echo
 echo "--- absence is zero, never an error"
 eq "missing file: open"  0 "$(ledger_count_open "$TMP/docs/nope.md")"
-eq "no ledger at all"    "" "$(DOCS=$TMP/empty ledger_files)"
-eq "no ledger: total"    0 "$(DOCS=$TMP/empty ledger_total_open)"
+eq "no ledger at all"    "" "$(KIT_DOCS=$TMP/empty ledger_files)"
+eq "no ledger: total"    0 "$(KIT_DOCS=$TMP/empty ledger_total_open)"
 
 echo
 echo "--- has_items: a ledger of only deferred work is still a ledger"

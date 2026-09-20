@@ -8,6 +8,7 @@
 set -uo pipefail
 
 DOCS="${DOCS:-docs}"
+KIT_DOCS="${KIT_DOCS:-docs/kit}"
 # The acceptance gate is ON unless the operator set exactly "off". Anything else
 # — unset, empty, "OFF", a typo — leaves it on, because a typo must not silently
 # remove a verification gate. Note the fail-open direction below: the jq guard
@@ -42,10 +43,10 @@ SP='[[:space:]]'
 CTX=""
 
 # --- lessons -----------------------------------------------------------------
-if [ -f "$DOCS/LESSONS.md" ]; then
+if [ -f "$KIT_DOCS/LESSONS.md" ]; then
   # A lesson is one bullet at column 0, however many lines it wraps across.
   # lessons_render reassembles it and reports anything the cap left out.
-  LESSONS=$(lessons_render "$DOCS/LESSONS.md" 12 4000)
+  LESSONS=$(lessons_render "$KIT_DOCS/LESSONS.md" 12 4000)
   if [ -n "$LESSONS" ]; then
     CTX="${CTX}## Lessons from prior sessions
 ${LESSONS}
