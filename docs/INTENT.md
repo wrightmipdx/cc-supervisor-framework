@@ -4,7 +4,7 @@
 
 A Claude Code orchestration framework, packaged as a starter kit. A developer
 clones it and runs `install.sh` against a project repo; it installs a
-constitution (`CLAUDE.md`), eight subagents, ten skills, seven hooks and a docs
+constitution (`CLAUDE.md`), nine subagents, ten skills, seven hooks and a docs
 skeleton. The product is the file set and its installer, not an application.
 
 ## Why it exists

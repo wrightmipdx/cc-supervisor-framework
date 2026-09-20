@@ -122,6 +122,7 @@ failure modes.
 | `reviewer` | sonnet | Fresh-eyes review. The default review lane |
 | `architect` | opus | The hard 10% and the escalation lane |
 | `critic` | opus | Review of security, money, data loss, public API, concurrency |
+| `acceptor` | sonnet | Demonstrate a plan's acceptance criteria against a scratch environment |
 
 The two opus lanes are the bill. Everything else is comparatively free, which
 is why the framework governs combined opus share rather than the Supervisor's
