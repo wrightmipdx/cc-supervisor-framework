@@ -80,6 +80,15 @@ if [ -x .claude/scripts/worktrees.sh ]; then
 else
   warn ".claude/scripts/worktrees.sh is missing — an open worktree dispatch will not show in status"
 fi
+if [ -x .claude/scripts/integrate-worktree.sh ]; then
+  if .claude/scripts/integrate-worktree.sh --self-test >/dev/null 2>&1; then
+    ok "integrate-worktree self-test passes"
+  else
+    bad "integrate-worktree FAILS — run .claude/scripts/integrate-worktree.sh --self-test"
+  fi
+else
+  warn ".claude/scripts/integrate-worktree.sh is missing — worktree merge-back must be done by hand"
+fi
 
 echo
 echo "== ledger parses"
