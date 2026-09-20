@@ -24,9 +24,9 @@ TMP=$(mktemp -d); trap 'rm -rf "$TMP"' EXIT
 LOGDIR="$TMP/metrics"; FLAGS="$TMP/flags"; mkdir -p "$LOGDIR" "$FLAGS"
 
 # A repo with an open ledger and a dirty tree: the ordinary mid-session state.
-R="$TMP/repo"; mkdir -p "$R/docs"
+R="$TMP/repo"; mkdir -p "$R/docs/kit"
 git -C "$R" init -q; git -C "$R" config user.email t@t; git -C "$R" config user.name t
-printf -- '- E1 [ ] something open\n- E2 [x] something done\n' > "$R/docs/LEDGER.md"
+printf -- '- E1 [ ] something open\n- E2 [x] something done\n' > "$R/docs/kit/LEDGER.md"
 git -C "$R" add -A >/dev/null 2>&1; git -C "$R" commit -qm "chore: seed"
 printf 'dirty\n' > "$R/scratchfile"
 
@@ -69,9 +69,9 @@ has "still says run retro"      "$(msg "$OUT")" '/retro'
 
 echo
 echo "--- a clean close says nothing at all"
-C="$TMP/clean"; mkdir -p "$C/docs"
+C="$TMP/clean"; mkdir -p "$C/docs/kit"
 git -C "$C" init -q; git -C "$C" config user.email t@t; git -C "$C" config user.name t
-printf -- '- E1 [x] all verified\n' > "$C/docs/LEDGER.md"
+printf -- '- E1 [x] all verified\n' > "$C/docs/kit/LEDGER.md"
 git -C "$C" add -A >/dev/null 2>&1; git -C "$C" commit -qm "chore: seed"
 OUT=$(TMPDIR="$FLAGS" METRICS_DIR="$LOGDIR" CLAUDE_PROJECT_DIR="$C" \
       bash "$KIT/.claude/hooks/50-stop-retro.sh" <<< '{"session_id":"s3"}'); RC=$?

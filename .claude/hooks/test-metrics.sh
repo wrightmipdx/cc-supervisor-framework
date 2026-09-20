@@ -28,12 +28,12 @@ LOGDIR="$TMP/metrics"
 # ledger, no lessons and no plan — which is exactly the state of a freshly
 # installed consumer — so a suite that leans on whatever this repo happens to
 # contain passes here and fails there.
-PROJ="$TMP/proj"; mkdir -p "$PROJ/docs"
+PROJ="$TMP/proj"; mkdir -p "$PROJ/docs/kit"
 git -C "$PROJ" init -q 2>/dev/null
 git -C "$PROJ" config user.email t@t 2>/dev/null; git -C "$PROJ" config user.name t 2>/dev/null
 cp -R "$KIT/.claude" "$PROJ/.claude" 2>/dev/null || true
-printf -- '- E1 [ ] an open requirement\n- E2 [x] a verified one\n' > "$PROJ/docs/LEDGER.md"
-printf -- '# Lessons\n\n- 2026-09-18 — a lesson that wraps\n  onto a second line.\n' > "$PROJ/docs/LESSONS.md"
+printf -- '- E1 [ ] an open requirement\n- E2 [x] a verified one\n' > "$PROJ/docs/kit/LEDGER.md"
+printf -- '# Lessons\n\n- 2026-09-18 — a lesson that wraps\n  onto a second line.\n' > "$PROJ/docs/kit/LESSONS.md"
 
 # Run a hook with a payload. Its exit status is the function's, so callers read
 # it with RC=$? straight after the command substitution.
