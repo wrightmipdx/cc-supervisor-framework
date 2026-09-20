@@ -43,6 +43,7 @@ worker returns the screenshot, the chair puts it beside the mockup.
 |---|---|
 | Name the demonstration steps for each `AC-n` | **You.** Judgment, and low volume — a few lines |
 | Execute them and capture to `scratch/` | **`builder`** (sonnet), or **`scout`** (haiku) when you can name the exact commands. Yourself, if you already hold the context and the output is small |
+| Execute them against a scratch environment **and** render a mechanical PASS/FAIL per criterion against the brief's own stated expected values | **`acceptor`** (sonnet) — see the `acceptor` agent and the note below |
 | Read the artifact and decide PASS or FAIL | **You.** This is the sponsor's judgment, exercised on their behalf |
 
 **Fix the steps before you dispatch.** A screenshot has almost no degrees of
@@ -58,7 +59,16 @@ PASS, FAIL or "works as expected" is out of contract: reject and re-run, as
 close on a prose description of the screen. A worker that judged was doing more
 than it was hired for. You read the artifact with your own eyes — that is
 `review` §1 satisfied, not bypassed, because what came back is evidence rather
-than a claim.
+than a claim. This still applies to `builder` and `scout`: neither renders a
+verdict, ever.
+
+`acceptor` is the one named exception, and a narrow one: it renders a
+mechanical PASS/FAIL/BLOCK per `AC-n` against the brief's own stated expected
+value — the same shape `reviewer` and `critic` already use when they render
+SHIP/BLOCK against a brief's done-when items, not the open-ended judgment the
+rule above is guarding against. This does not change who tells the sponsor the
+plan is accepted: the chair still reads `acceptor`'s report and owns that
+call, same as it owns reading a `critic` BLOCK today.
 
 **Keep the output small.** Yours is the most expensive context in the session
 and everything in it is re-billed on every later turn. Bulk goes to

@@ -29,6 +29,7 @@ here.
 | Architecture, irreversible migrations, security, concurrency, escalation after two failed tiers below | **architect** (opus) |
 | Fresh-eyes review of a routine close — the default | **reviewer** (sonnet) |
 | Fresh-eyes review of a risk-category close: security, auth, money, data loss, public API, concurrency, new modules | **critic** (opus) |
+| Demonstrate a plan's acceptance criteria against a live scratch environment | **acceptor** (sonnet) |
 | Bulk prose — changelogs, README sweeps, doc chores | **scribe** (haiku) |
 
 Commit messages are not a delegation. You just read the diff; write it inline.

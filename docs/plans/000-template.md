@@ -83,7 +83,7 @@ cannot brief yet is too vague — split it or sharpen it.
 
 ### T1 — <title>
 
-- Worker: scout | cartographer | builder | designer | architect | scribe
+- Worker: scout | cartographer | builder | designer | architect | scribe | acceptor
 - Review: direct | reviewer | critic   <!-- REQUIRED; without one it is not dispatchable -->
 - Depends on: —
 - Ledger items: <which checkboxes this closes>

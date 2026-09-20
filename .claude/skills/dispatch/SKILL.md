@@ -98,7 +98,7 @@ construction, with no naming scheme to maintain or drift out of sync.
 | Tier | Approx cost | Use it for | Do not use it for |
 |---|---|---|---|
 | haiku (scout, scribe) | ~0.25x sonnet | Finding, listing, bulk prose | Anything needing a decision |
-| sonnet (cartographer, builder, designer, reviewer) | 1x | Briefed implementation, explanation, routine review | Unspecified problems |
+| sonnet (cartographer, builder, designer, reviewer, acceptor) | 1x | Briefed implementation, explanation, routine review | Unspecified problems |
 | opus (architect, critic) | ~5x sonnet | The hard 10 percent, risk-category review | Bulk work, routine edits, routine review |
 
 The opus row is the bill. At the 14/71/15 token split `docs/kit/ROUTING.md` derives
