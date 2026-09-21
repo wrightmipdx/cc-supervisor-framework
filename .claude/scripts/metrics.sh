@@ -264,7 +264,25 @@ printf '\n## Token cost — what this session actually spent\n'
 SESSION_ID=$(printf '%s' "$EV" | jq -r '.[0].session // ""')
 TOKENS="$(dirname "$0")/session-tokens.sh"
 if [ -x "$TOKENS" ]; then
-  "$TOKENS" "$SESSION_ID" || printf '   UNAVAILABLE — session-tokens.sh exited non-zero\n'
+  COST=$("$TOKENS" "$SESSION_ID")
+  if [ -n "$COST" ]; then
+    printf '%s\n' "$COST"
+    # The chair's own tier dominates the opus share, so an unusual chair choice
+    # changes how every number below reads. State it rather than leaving it to
+    # be back-derived from the tier table (LEDGER-010 F3).
+    CONFIGURED=$(jq -r '.model // "unset"' .claude/settings.json 2>/dev/null || echo "unset")
+    OBSERVED=$(printf '%s' "$COST" | awk '$1 == "main" && $2 != "" {print $2; exit}')
+    printf '\n   Chair\n'
+    printf '     configured (.claude/settings.json): %s\n' "$CONFIGURED"
+    printf '     ran as this session:                %s\n' "${OBSERVED:-unknown}"
+    if [ -n "$OBSERVED" ] && [ "$CONFIGURED" != "unset" ] && [ "$OBSERVED" != "$CONFIGURED" ]; then
+      printf '     DIVERGED — the chair was not the configured model, so the opus\n'
+      printf '     share above is not this repo'"'"'s steady state. Say so before any\n'
+      printf '     tiering decision rests on it.\n'
+    fi
+  else
+    printf '   UNAVAILABLE — session-tokens.sh produced no output\n'
+  fi
 else
   printf '   UNAVAILABLE — %s is missing or not executable\n' "$TOKENS"
 fi
