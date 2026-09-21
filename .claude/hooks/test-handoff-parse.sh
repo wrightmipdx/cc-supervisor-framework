@@ -112,5 +112,30 @@ has "missing dest dir: names the directory problem" "$(cat "$TMP/err3")" 'direct
 eq "missing dest dir: no stray temp file" "0" \
   "$(find "$TMP" -maxdepth 1 -name 'HANDOFF.md.*' | wc -l | tr -d ' ')"
 
+echo
+echo "--- retro's real sequence: step 3 writes, step 4 sweeps scratch/, file survives"
+# LEDGER-010 X5: the library's other cases exercise handoff_write in isolation,
+# which cannot catch a mistake in how retro ORDERS its own steps. A session
+# reported step 3 writing the brief and step 4's sweep then deleting it. This
+# reproduces the real sequence against a fixture layout.
+mkdir -p "$TMP/repo/scratch" "$TMP/repo/docs/kit"
+printf -- '- 010: wave 2 open, T4 in review.\n' > "$TMP/repo/scratch/handoff-draft.md"
+handoff_write "$TMP/repo/scratch/handoff-draft.md" "$TMP/repo/docs/kit/HANDOFF.md"
+eq "step 3 wrote the brief" "yes" "$([ -s "$TMP/repo/docs/kit/HANDOFF.md" ] && echo yes || echo no)"
+sum_after_step3=$(cksum "$TMP/repo/docs/kit/HANDOFF.md")
+find "$TMP/repo/scratch" -mindepth 1 -delete          # step 4: empty scratch/
+eq "step 4 removed the draft"       "no"  "$([ -e "$TMP/repo/scratch/handoff-draft.md" ] && echo yes || echo no)"
+eq "step 4 left the brief intact"   "yes" "$([ -s "$TMP/repo/docs/kit/HANDOFF.md" ] && echo yes || echo no)"
+eq "brief is byte-identical after the sweep" "$sum_after_step3" "$(cksum "$TMP/repo/docs/kit/HANDOFF.md")"
+# and the temp file never lands in scratch/ — it is created next to dest
+eq "no handoff temp file left in docs/kit" "0" \
+  "$(find "$TMP/repo/docs/kit" -maxdepth 1 -name 'HANDOFF.md.*' | wc -l | tr -d ' ')"
+# the reported loss, reproduced in the only order that could cause it: sweep first
+printf 'previous close\n' > "$TMP/repo/docs/kit/HANDOFF.md"
+before_sum=$(cksum "$TMP/repo/docs/kit/HANDOFF.md")
+handoff_write "$TMP/repo/scratch/handoff-draft.md" "$TMP/repo/docs/kit/HANDOFF.md" 2>/dev/null
+eq "step 4 before step 3 fails safe, not silently" "$before_sum" \
+  "$(cksum "$TMP/repo/docs/kit/HANDOFF.md")"
+
 printf '\n%d passed, %d failed\n' "$PASS" "$FAIL"
 [ "$FAIL" -eq 0 ]
