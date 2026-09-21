@@ -90,6 +90,24 @@ if [ -x .claude/scripts/integrate-worktree.sh ]; then
 else
   warn ".claude/scripts/integrate-worktree.sh is missing — worktree merge-back must be done by hand"
 fi
+# The blocks above name the scripts whose ABSENCE costs something specific, so
+# each carries its own warning. This sweep catches every other script that
+# ships a --self-test, so adding one is enough to get it run — the hooks' test
+# list was a hardcoded roster once, and a suite added later silently never ran
+# (docs/kit/LESSONS.md, 2026-09-20).
+for s in .claude/scripts/*.sh; do
+  [ -x "$s" ] || continue
+  case "$s" in
+    */session-tokens.sh|*/trace.sh|*/worktrees.sh|*/integrate-worktree.sh) continue ;;
+  esac
+  grep -q -- '--self-test' "$s" || continue
+  n=$(basename "$s" .sh)
+  if "$s" --self-test >/dev/null 2>&1; then
+    ok "$n self-test passes"
+  else
+    bad "$n FAILS — run $s --self-test"
+  fi
+done
 
 echo
 echo "== ledger parses"

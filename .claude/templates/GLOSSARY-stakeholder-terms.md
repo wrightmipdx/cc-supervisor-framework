@@ -40,6 +40,7 @@ upgrade never overwrites it.
 | fan out | split up the work | Parallel assignments instead of one large one. |
 | resume | pick back up | Continuing an unfinished assignment once, rather than starting over. |
 | break point | natural pause point | A place the work can stop cleanly and be picked back up later, because everything before it is finished and handed over. |
+| disqualified break point | not a clean pause point | A phase boundary we could pause at on paper, but shouldn't: one of the checks on the "done" list is finished partly before it and partly after, so pausing there risks marking that check complete when only half of it is. Named anyway, so the choice stays visible. |
 
 ## Artifacts & status
 

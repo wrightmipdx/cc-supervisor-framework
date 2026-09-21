@@ -80,63 +80,117 @@ rather than a review — see `CLAUDE.md`, **The chair and the sponsor**.
 item 5, walk the task graph's `Depends on:` edges and name every real wave
 boundary the plan already has:
 
+**`.claude/scripts/break-points.sh <plan.md>` does the derivation** — waves,
+boundaries, both disqualifiers, verdicts. Run it; do not work the graph by
+hand. `--all` sweeps every plan, `--self-test` asserts the rules below. The
+bullets here are what the script encodes, kept so you can explain an answer
+and so a plan not yet on disk can still be read:
+
 - Waves come from the edges. Wave 1 is every task whose `Depends on:` names
   no task; every other task sits one wave after the latest wave holding a
-  task it names. A range or a list names each task in it — `T1–T4` is T1, T2,
-  T3 and T4 (`docs/plans/002`'s T5). A `Depends on:` naming something that is
-  not a task — a closed decision, an external event — is not an edge and
-  creates no boundary (`docs/plans/010`'s T2, `Depends on: decision 1`).
-- A candidate break point exists after wave *k* when some later task's
-  `Depends on:` names a wave-*k* task. Name it by **the highest-numbered task
-  in wave *k* that a later task depends on** — numerically, so T11 outranks
-  T8 — not by the last id in the wave, and not by file order, which diverges
-  from id order in this repo
-  already (`docs/plans/004` lists T6 first). A task no later task names
-  blocks nothing and never supplies the label: plan 007's wave 1 is
-  {T1, T2, T5}, and the answer is "after T2", never T5.
-- **The named id labels the boundary; it is not the cut line.** The break is
-  taken after *every* task in wave *k*, including the ones nothing depends
-  on. "Break after T2" on plan 007 means T1, T2 **and T5** all land before
-  the session closes. Say that cut out loud in the offer, or a sponsor will
-  reasonably read it as "dispatch up to T2 and stop" — and T5 would be left
-  unstarted, which is exactly the unresumable state the next bullet guards.
-- One disqualifier: a wave is not a break point if a task in it **states in
+  task it names. A range names each task in it — `T1–T4` is T1, T2, T3, T4
+  (`docs/plans/002`'s T5). A `Depends on:` naming something that is not a
+  task — a closed decision, an external event — is not an edge and creates no
+  boundary (`docs/plans/010`'s T2, `Depends on: decision 1`).
+- A boundary exists after wave *k* when some later task depends on a wave-*k*
+  task. Label it by **the highest-numbered wave-*k* task a later task depends
+  on** — numerically, so T11 outranks T8, not by position in the file, which
+  already diverges from id order (`docs/plans/004` lists T6 first). A task
+  nothing depends on blocks nothing and never supplies the label.
+- **The label is not the cut line.** The break falls after *every* task in
+  wave *k*, including the ones nothing depends on. Say that cut out loud, or
+  a sponsor reads "break after T2" as "dispatch up to T2 and stop" and a
+  sibling task is left unstarted — the unresumable state the disqualifiers
+  below exist to prevent.
+- First disqualifier: a wave is not a break point if a task in it **states in
   its own brief that it lands no commit**, leaving a resuming session nothing
-  to resume from (the shape `LEDGER-010` I2 was written for). Nothing else
-  disqualifies a wave, and `Review: direct` emphatically does not —
+  to resume from (the shape `LEDGER-010` I2 was written for). `Review: direct`
+  emphatically does not disqualify a wave —
   `CLAUDE.md`'s routing table defines that lane as "edit, run the checks,
   commit," and `commit/SKILL.md` makes one brief one committed increment, so
   every task commits by construction. No brief in this repo currently makes
   that statement, so the test is inert here. It is kept because it is
   decidable when it runs — you read the brief, at confirmation time — and
   because the state it rules out fails silently.
-- No task count and no dependency depth gates this. Every real boundary gets
-  named, every time; several plans here have three or more. A plan where
-  every task reads `Depends on: —` has no boundary to name and renders
-  exactly as it did before this paragraph existed — no line, no mention,
-  nothing suppressed by a size judgment.
-- Two or more candidates: name them all and let the sponsor pick, in wave
-  order, earliest boundary first — the ids will not be consecutive and are
-  not meant to be (`docs/plans/002` comes out T3, T2, T4, which is correct,
-  not a typo). You do not pre-select one and you do not argue for one.
+- Second disqualifier: a boundary after wave *k* is not a break point if **a
+  single `AC-n` or a single ledger item is claimed by tasks on both sides of
+  it**. Union the `Acceptance:` and `Ledger items:` lines of every task at or
+  before wave *k*; union them for every task after it; any id in both kills
+  that boundary. Check both fields — a shared ledger item is the more direct
+  hazard, because `[x]` is what gets ticked early, and `docs/plans/007` proves
+  the fields are not interchangeable: its boundary after T2 has disjoint
+  `AC-n` sets but E2 and X5 both span it. Dependencies do not see any of this,
+  so the edge walk above cannot catch it.
+  Why: a claim split across the break gets demonstrated in halves, and a half
+  is what gets recorded. Measured in `LEDGER-010` X4 / AC-5 — the closing
+  chunk ticked the item on its half, and the resuming chunk, reading only the
+  committed records and the handoff brief as a real resume does, appended its
+  own half instead of correcting the early tick. Neither chunk did anything
+  wrong; each saw a complete-looking picture.
+  A task whose field reads `—` or is absent claims nothing and can never
+  disqualify a boundary. A plan with no `Acceptance:` and no `Ledger items:`
+  lines at all is **unchecked by this test, not cleared by it** — say so
+  rather than reporting a clean break you did not verify.
+  Nothing else disqualifies a boundary. Neither field subsumes the other —
+  007's boundary is killed by ledger items alone, 005's after T5 and T6 by
+  `AC-n` alone — so both are checked, and both already exist.
+- **A disqualified boundary is still named, flagged, never silently dropped**,
+  and no task count or dependency depth gates any of this. Say which check
+  failed and on what id. The chair's job is to say which boundaries are real
+  and which are not safe, not to quietly shorten the list — a sponsor reading
+  three candidates cannot tell you removed two. Every boundary appears, in
+  wave order, earliest first, clean and flagged together in one list; the ids
+  will not be consecutive and are not meant to be (`docs/plans/002` comes out
+  T3, T2, T4). You do not pre-select and you do not argue for one. A plan
+  where every task reads `Depends on: —` has no boundary at all and renders
+  exactly as it did before this paragraph existed — no line, no mention.
 
 Then ask once — the fact, the cut, its cost, the choice:
 
-> This plan can break cleanly after T2 — T1, T2 and T5 all land first.
+> This plan can break cleanly after T2 — T1 and T2 both land first.
 > Breaking means the rest starts in a fresh session, which pays a session
 > start plus a handoff-brief and lessons re-read that running straight through
 > does not. End-to-end, or break after T2?
 
-Several candidates take the same single ask, a clause each. However many
-there are, every one of them is named — you never show a subset, and you
-never trim the list to keep the ask short. A four-candidate plan looks like
-this (ids illustrative, not any plan in this repo):
+That is `docs/plans/010-chunked-execution.md`'s own shape, and it is clean on
+both checks. A boundary that fails one is named in the same breath, with the
+check that killed it, so the sponsor sees the whole graph rather than an
+edited one:
 
-> This plan can break cleanly after Ta (Ta alone lands first), after Tb (Tb
-> and Tc as well), after Td (Te too), or after Tf. Each one starts the rest
-> in a fresh session, which pays a session start plus a handoff-brief and
-> lessons re-read; running straight through does not. End-to-end, or break at
-> one of those?
+> This plan has one wave boundary, after T2, and it is not a clean break:
+> ledger items E2 and X5 are each claimed by a task on both sides of it, so
+> closing there would tick one of them on half its evidence. I am not
+> offering it. End-to-end is the only safe run.
+
+That is `docs/plans/007-chair-overhead.md`, verified — the plan whose cost
+motivated this whole mechanism turns out to have no safe break point at all.
+Do not soften that into "it would be better to run through"; say which ids
+span the boundary, because the sponsor can overrule you and should be able to
+see what they would be accepting.
+
+**If the sponsor takes a flagged break anyway** — their call, and a legitimate
+one — the spanning ids are the thing that must survive. Name them in
+`docs/kit/HANDOFF.md`, and leave every one of them **un-ticked** at the close
+even where the closing chunk did its half: a `[ ]` the next session re-checks
+costs minutes, and the `[x]` it would otherwise inherit is the failure this
+whole rule exists to prevent.
+
+Most plans are mixed — some boundaries clean, some flagged. They take the same
+single ask, a clause each, clean and flagged in one wave-ordered list. You
+never show a subset and you never trim to keep the ask short:
+
+> This plan has five wave boundaries and only one is a clean break: after T9,
+> once everything before it lands. I am not offering the other four — ledger
+> items I5 and X8 are claimed on both sides of all of them, and after T5 also
+> splits E4, E10, I8 and X6. Breaking at T9 starts the rest in a fresh
+> session, which pays a session start plus a handoff-brief and lessons
+> re-read; running straight through does not. End-to-end, or break after T9?
+
+That is `docs/plans/001`'s real shape — five boundaries, one clean, every
+disqualification from a ledger item and not one from an `AC-n`. Naming the
+four is not padding: it is the difference between a sponsor who knows the plan
+is nearly unsplittable and one who thinks it has a single natural pause. When
+one id spans almost everything, as I5 does here, that is itself the finding.
 
 Illustrative shape, not literal copy. State the cost; never estimate the
 saving — nothing is dispatched yet, so there is no transcript to price. No

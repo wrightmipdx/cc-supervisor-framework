@@ -48,8 +48,12 @@ Phase 3 — <final walkthrough / acceptance / close-out>
 by phase and never by task id, saying what finishes first — the whole phase
 does, not part of it — then the trade-off and the choice: pausing costs a
 short catch-up when we pick it back up, running through doesn't, and no
-answer means run through. Omit this line entirely when there is no such
-boundary.>
+answer means run through. A boundary that is NOT a clean pause point is named
+here too, never quietly dropped: say which item on the "done" list straddles
+it and that you are not offering it — "Phase 2 isn't a clean pause point:
+acceptance check 3 is finished partly before it and partly after." If no
+boundary is clean, say that plainly and offer none. Omit this line entirely
+only when the work has no phase boundary at all.>
 
 **Checks along the way**
 - Every change gets a quality review before it's accepted.
