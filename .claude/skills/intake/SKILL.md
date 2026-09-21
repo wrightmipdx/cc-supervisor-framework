@@ -9,14 +9,33 @@ Run this at session start and whenever a new request arrives.
 
 ## 1. Restore context
 
+- Read `docs/kit/HANDOFF.md` first, if it exists — the last session's `retro`
+  wrote it, one bullet per plan that is active or changed status, carrying the
+  goal, what shipped, what is open and why, and the next step. **The
+  SessionStart hook never injects this file** (it injects lessons, open ledger
+  items and active-plan filenames), so always read it fresh. Absent is normal,
+  not an error — no retro has run yet, or this is a fresh install: carry on
+  with the ledger and plans and say nothing about it.
+- Say in your opening summary that you read it, so the sponsor knows which
+  picture you are working from — one clause is enough: "Per the handoff brief,
+  plan 010 is mid-flight with T3 and T4 open."
 - Read `docs/kit/LESSONS.md` and any `docs/kit/LEDGER*.md`.
 - Open ledger items are unfinished work. Surface them.
-- The SessionStart hook may have injected this already. If so, do not re-read.
+- The SessionStart hook may have injected the lessons and ledger items above.
+  If so, do not re-read them.
+- **The brief summarizes; it does not replace.** It is enough to skip opening
+  the most recent plan file cold. It is not enough to act on: before
+  dispatching against a plan it names, open that plan. A bullet is a pointer,
+  and the last session wrote it before knowing what you would be asked.
 
 ## 2. Check for an active plan
 
 Look in `docs/plans/` for a file with `status: active`. If one exists,
 summarize its progress and ask: continue, or new work?
+
+If `docs/kit/HANDOFF.md` already carries a bullet for that plan, summarize
+from the bullet — that is what it is for. Open the plan file itself once the
+answer is "continue", not to ask the question.
 
 ## 3. Restate the request
 
