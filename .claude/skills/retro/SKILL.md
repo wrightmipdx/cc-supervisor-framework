@@ -73,7 +73,10 @@ every future session.
 
 ## 4. Hygiene
 
-- Empty `scratch/`.
+- Empty `scratch/` — but keep `scratch/.gitkeep`. It is tracked, and deleting
+  it drops the directory from git, so the next session's workers write into a
+  path that is not there. `find scratch -mindepth 1 ! -name .gitkeep -delete`.
+  Check `git status` afterwards: a deletion showing up there is this mistake.
 - Archive the ledger when the topic closes: rename to
   `LEDGER-<topic>-archive.md`.
 - `LESSONS.md` over roughly 12 lessons: prune it now. A file that always
