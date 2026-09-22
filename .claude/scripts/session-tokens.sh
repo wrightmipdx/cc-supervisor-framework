@@ -209,6 +209,84 @@ FIX
 {"event":"commit_landed","ts":"2026-09-19T01:00:00Z","session":"sess-2","head":"onlycommit00000","commit_type":"fix","files":1,"insertions":5}
 FIX
 
+  # plans/013-phase-accounting.md fixtures — "Main-thread turns by phase".
+  #
+  # sess-3: the rich case. Nine main-lane turns (110 billable tok each — i=10,
+  # o=100 — so every phase total below is a clean multiple of 110, checkable
+  # by eye) around a landmark sequence built to hit every required edge:
+  #   - D1 is the session's FIRST landmark AND its `task` field is genuinely
+  #     absent (X1's historical shape, generalized: an empty/omitted field at
+  #     the very first landmark must not shift later columns — same class as
+  #     the emit_usage IFS-tab squeeze, now against this block's own TSV).
+  #   - D2 -> D2b -> C3, two dispatches inside ONE tainted stretch: D2's
+  #     window must close using D2's OWN label at the instant D2b fires, not
+  #     D2b's — state carried across the transition, not sandwiched (the
+  #     second historical bug class, generalized).
+  #   - D2b -> C3 land one turn-slot apart with NOTHING between them: a
+  #     near-zero orchestration window that must still print "turns 0", not
+  #     vanish or get folded into a neighbour (X4).
+  #   - C3 -> D3 has two real turns with NO commit between them and D3 is
+  #     alpha's... no, gamma's only dispatch, with no matching
+  #     dispatch_launched at all: those two turns must land in D3's
+  #     orchestration row (the tainted-span gap-absorption AC-2 forces, see
+  #     the comment above price_main_range in the main script), and D3 must
+  #     print "unjoined" rather than trust its own (unconfirmed) fields.
+  #   - D4 is alpha's SECOND dispatch (occurrence tracking) AND the session's
+  #     LAST landmark: its own window absorbs the C4->D4 gap (zero turns
+  #     here) and the open tail after it (t6, t7) must price as close, not
+  #     as more orchestration — the open-ended close tail.
+  #   - C1->C2 is the one clean (untainted) inter-commit span: the ONLY turn
+  #     in it must land in direct-lane, sourced from $TMP/windows verbatim
+  #     (AC-2).
+  mkdir -p "$T/proj3/.metrics" "$T/tx3"
+  cat > "$T/tx3/sess-3.jsonl" <<'FIX'
+{"type":"assistant","requestId":"q1","timestamp":"2026-09-19T02:00:00.000Z","message":{"model":"claude-sonnet-5","usage":{"input_tokens":10,"output_tokens":100,"cache_read_input_tokens":0,"cache_creation_input_tokens":0}}}
+{"type":"assistant","requestId":"q2","timestamp":"2026-09-19T02:00:20.000Z","message":{"model":"claude-sonnet-5","usage":{"input_tokens":10,"output_tokens":100,"cache_read_input_tokens":0,"cache_creation_input_tokens":0}}}
+{"type":"assistant","requestId":"q2b","timestamp":"2026-09-19T02:00:25.000Z","message":{"model":"claude-sonnet-5","usage":{"input_tokens":10,"output_tokens":100,"cache_read_input_tokens":0,"cache_creation_input_tokens":0}}}
+{"type":"assistant","requestId":"q3","timestamp":"2026-09-19T02:00:35.000Z","message":{"model":"claude-sonnet-5","usage":{"input_tokens":10,"output_tokens":100,"cache_read_input_tokens":0,"cache_creation_input_tokens":0}}}
+{"type":"assistant","requestId":"q3b","timestamp":"2026-09-19T02:00:43.000Z","message":{"model":"claude-sonnet-5","usage":{"input_tokens":10,"output_tokens":100,"cache_read_input_tokens":0,"cache_creation_input_tokens":0}}}
+{"type":"assistant","requestId":"q4","timestamp":"2026-09-19T02:00:50.000Z","message":{"model":"claude-sonnet-5","usage":{"input_tokens":10,"output_tokens":100,"cache_read_input_tokens":0,"cache_creation_input_tokens":0}}}
+{"type":"assistant","requestId":"q5","timestamp":"2026-09-19T02:00:58.000Z","message":{"model":"claude-sonnet-5","usage":{"input_tokens":10,"output_tokens":100,"cache_read_input_tokens":0,"cache_creation_input_tokens":0}}}
+{"type":"assistant","requestId":"q6","timestamp":"2026-09-19T02:01:20.000Z","message":{"model":"claude-sonnet-5","usage":{"input_tokens":10,"output_tokens":100,"cache_read_input_tokens":0,"cache_creation_input_tokens":0}}}
+{"type":"assistant","requestId":"q7","timestamp":"2026-09-19T02:01:30.000Z","message":{"model":"claude-sonnet-5","usage":{"input_tokens":10,"output_tokens":100,"cache_read_input_tokens":0,"cache_creation_input_tokens":0}}}
+FIX
+  cat > "$T/proj3/.metrics/session-sess-3.jsonl" <<'FIX'
+{"event":"dispatch","ts":"2026-09-19T02:00:10Z","session":"sess-3","origin":"main","agent":"alpha","tier":"sonnet","brief_bytes":10}
+{"event":"dispatch_launched","ts":"2026-09-19T02:00:11Z","session":"sess-3","origin":"main","agent":"alpha","agent_id":"aaaa1111"}
+{"event":"commit_landed","ts":"2026-09-19T02:00:30Z","session":"sess-3","head":"c1111111aaaa","commit_type":"fix","files":1,"insertions":1}
+{"event":"commit_landed","ts":"2026-09-19T02:00:40Z","session":"sess-3","head":"c2222222bbbb","commit_type":"fix","files":1,"insertions":1}
+{"event":"dispatch","ts":"2026-09-19T02:00:41Z","session":"sess-3","origin":"main","agent":"beta","tier":"haiku","task":"T2","brief_bytes":10}
+{"event":"dispatch_launched","ts":"2026-09-19T02:00:41Z","session":"sess-3","origin":"main","agent":"beta","agent_id":"bbbb1111"}
+{"event":"dispatch","ts":"2026-09-19T02:00:44Z","session":"sess-3","origin":"main","agent":"delta","tier":"fable","task":"T2b","brief_bytes":10}
+{"event":"dispatch_launched","ts":"2026-09-19T02:00:44Z","session":"sess-3","origin":"main","agent":"delta","agent_id":"dddd1111"}
+{"event":"commit_landed","ts":"2026-09-19T02:00:45Z","session":"sess-3","head":"c3333333cccc","commit_type":"fix","files":1,"insertions":1}
+{"event":"dispatch","ts":"2026-09-19T02:00:55Z","session":"sess-3","origin":"main","agent":"gamma","tier":"opus","task":"T3","brief_bytes":10}
+{"event":"commit_landed","ts":"2026-09-19T02:01:00Z","session":"sess-3","head":"c4444444dddd","commit_type":"fix","files":1,"insertions":1}
+{"event":"dispatch","ts":"2026-09-19T02:01:05Z","session":"sess-3","origin":"main","agent":"alpha","tier":"sonnet","task":"T4","brief_bytes":10}
+{"event":"dispatch_launched","ts":"2026-09-19T02:01:06Z","session":"sess-3","origin":"main","agent":"alpha","agent_id":"aaaa2222"}
+FIX
+
+  # sess-4: X1 generalized — a dispatch (the session's only landmark) lands
+  # before any priced main-lane turn, so `setup` cannot know what preceded
+  # it. UNAVAILABLE for that phase specifically, not a wrong 0 and not a
+  # crash on the rest of the block.
+  mkdir -p "$T/proj4/.metrics" "$T/tx4"
+  cat > "$T/tx4/sess-4.jsonl" <<'FIX'
+{"type":"assistant","requestId":"u1","timestamp":"2026-09-19T05:00:00.000Z","message":{"model":"claude-sonnet-5","usage":{"input_tokens":10,"output_tokens":100,"cache_read_input_tokens":0,"cache_creation_input_tokens":0}}}
+FIX
+  cat > "$T/proj4/.metrics/session-sess-4.jsonl" <<'FIX'
+{"event":"dispatch","ts":"2026-09-19T04:00:00Z","session":"sess-4","origin":"main","agent":"zeta","tier":"sonnet","task":"T9","brief_bytes":10}
+FIX
+
+  # sess-6: X2's other half — no dispatch AND no commit_landed at all (a
+  # session with no event log for it, the pre-0.4.0 shape). Every priced
+  # turn must still land somewhere (setup, by the zero-landmarks rule), not
+  # vanish.
+  mkdir -p "$T/proj6/.metrics" "$T/tx6"
+  cat > "$T/tx6/sess-6.jsonl" <<'FIX'
+{"type":"assistant","requestId":"v1","timestamp":"2026-09-19T06:00:00.000Z","message":{"model":"claude-sonnet-5","usage":{"input_tokens":10,"output_tokens":100,"cache_read_input_tokens":0,"cache_creation_input_tokens":0}}}
+FIX
+
   BEFORE=$(find "$T" -type f | sort | while read -r f; do printf '%s %s\n' "$f" "$(wc -c <"$f")"; done)
 
   OUT=$(CLAUDE_PROJECT_DIR="$T/proj" CLAUDE_TRANSCRIPT_DIR="$T/tx" METRICS_DIR="$T/proj/.metrics" \
@@ -279,6 +357,112 @@ FIX
   printf '%s' "$OUT3" | grep -q 'onlycomm.*before any priced turn' \
     && { printf '%s\n' "$OUT3" >&2; fail "chair-windows: the log's first commit wrongly reported UNAVAILABLE despite a real preceding turn (IFS-tab squeeze regressed)"; }
 
+  # plans/013-phase-accounting.md — X2 (zero-dispatch half): sess-2's own
+  # fixture (one commit, no dispatch ever) also drives the new phase block.
+  # No dispatch this session, so no setup row (the first landmark is a
+  # commit) and no orchestration rows; direct-lane must equal what the
+  # windows block above already counted for the SAME commit (AC-2, X2).
+  printf '%s' "$OUT3" | grep -q "first landmark was a commit" \
+    || fail "phase: sess-2 (no dispatch) should report 0-turn setup, not a guess"
+  printf '%s' "$OUT3" | grep -q 'orchestration  no dispatches this session' \
+    || fail "phase: sess-2 should report no dispatches"
+  printf '%s' "$OUT3" | grep -qE 'direct-lane +1 turn' \
+    || fail "phase: sess-2's direct-lane total should match the 1-turn window above (AC-2)"
+  printf '%s' "$OUT3" | grep -qE 'close +0 turn' \
+    || fail "phase: sess-2 has nothing after its one commit — close should be 0, not omitted"
+
+  # plans/013-phase-accounting.md T1 — sess-3: the rich fixture. See the
+  # comment beside its construction above for what each landmark is for.
+  OUT4=$(CLAUDE_PROJECT_DIR="$T/proj3" CLAUDE_TRANSCRIPT_DIR="$T/tx3" METRICS_DIR="$T/proj3/.metrics" \
+         "$0" sess-3 2>&1) || { printf '%s\n' "$OUT4"; die "self-test: sess-3 run exited non-zero"; }
+  fail4() { printf 'self-test FAIL: %s\n' "$1" >&2; printf '%s\n' "$OUT4" >&2; exit 1; }
+  printf '%s' "$OUT4" | grep -qE 'setup +1 turn.*110 billable' \
+    || fail4 "phase: sess-3 setup should be the one turn before D1 (110 billable tok) — D1's own missing task field must not shift it"
+  # D1: the session's first landmark, task genuinely absent — must still
+  # print as its own row (agent/tier real, task "-"), not corrupt the row
+  # after it (the generalized IFS-tab-squeeze shape).
+  printf '%s' "$OUT4" | grep -qE 'orchestration alpha +sonnet +-  *turns +2 +tok +220' \
+    || fail4 "phase: D1's orchestration row (alpha/sonnet, no task) should show 2 turns / 220 tok"
+  # The one clean inter-commit span (C1->C2) is direct-lane, sourced from the
+  # SAME windows the block above prints (AC-2) — not re-derived.
+  printf '%s' "$OUT4" | grep -qE 'direct-lane +1 turn.*110 billable' \
+    || fail4 "phase: sess-3 direct-lane should be the one C1->C2 turn (110 billable tok), matching the windows block"
+  # D2 then D2b inside ONE tainted stretch: D2's window must close on D2's
+  # OWN label the instant D2b fires (state carried across the transition,
+  # not sandwiched — the generalized second historical bug).
+  printf '%s' "$OUT4" | grep -qE 'orchestration beta +haiku +T2 +turns +1 +tok +110' \
+    || fail4 "phase: D2's own window (1 turn) must not be lost or merged into D2b's"
+  # D2b -> C3: adjacent, nothing between them — a near-zero orchestration
+  # window that must still print, not vanish or double count (X4).
+  printf '%s' "$OUT4" | grep -qE 'orchestration delta +fable +T2b +turns +0 +tok +0' \
+    || fail4 "phase: D2b's near-zero window (X4) must print 0 turns, not disappear"
+  # D3: unjoined (no dispatch_launched) — real turns still shown, role is
+  # not guessed. Its window absorbs the C3->D3 gap (two real turns) because
+  # AC-2 requires direct-lane to match the windows block exactly, and that
+  # block drops the WHOLE C3..C4 span once D3 taints it.
+  printf '%s' "$OUT4" | grep -qE 'orchestration unjoined +\? +- +turns +2 +tok +220' \
+    || fail4 "phase: D3 (unjoined) should still show its 2 real turns, role reported as unjoined, never a guess"
+  # D4: alpha's SECOND dispatch (occurrence tracking) and the session's LAST
+  # landmark — its own absorbed window is real but empty here, and the open
+  # tail after it (2 turns) must price as close, not more orchestration.
+  printf '%s' "$OUT4" | grep -qE "orchestration alpha +sonnet +T4 +turns +0 +tok +0.*session's last landmark" \
+    || fail4 "phase: D4 (alpha's 2nd dispatch, last landmark) should show 0 turns with the close-tail note"
+  printf '%s' "$OUT4" | grep -qE 'close +2 turn.*220 billable' \
+    || fail4 "phase: the open-ended tail after D4 (2 turns, 220 tok) should price as close"
+  # AC-2 is scoped to committed windows (decision 2): the windows block's
+  # trailing ceiling after C4 (2 turns) is NOT direct-lane here, and the block
+  # must say where those turns went rather than disagree silently.
+  printf '%s' "$OUT4" | grep -q 'note: the windows-block tail after the last commit (2 turn(s)) is not direct-lane here — 2 in close, 0 in orchestration' \
+    || fail4 "phase: sess-3's trailing ceiling (2 turns after C4) should be reconciled by a note naming 2 in close"
+  # X3, asserted arithmetically, not just that every label appears: phase
+  # turn/token sums must equal the main-lane totals printed at the top.
+  # `$1=="main"` (an exact field match, not a grep substring) is what keeps
+  # this off the "main thread :" summary line further down the same report.
+  MAIN_TURNS=$(printf '%s' "$OUT4" | awk '$1=="main" && $2 ~ /^[a-z]+$/ && $3 ~ /^[0-9]+$/ { s+=$3 } END { print s+0 }')
+  MAIN_TOK=$(printf '%s' "$OUT4" | awk '$1=="main" && $2 ~ /^[a-z]+$/ && $3 ~ /^[0-9]+$/ { s+=$5 } END { print s+0 }')
+  [ "$MAIN_TURNS" = "9" ] || fail4 "phase: sess-3 should have 9 main-lane turns, got $MAIN_TURNS"
+  [ "$MAIN_TOK" = "990" ] || fail4 "phase: sess-3 should have 990 billable tok, got $MAIN_TOK"
+  # setup/close/direct-lane share one printf shape: label, turns($2), "turn(s),", tok($4).
+  SETUP_T=$(printf '%s' "$OUT4" | awk '/^   setup +[0-9]/ {print $2}')
+  SETUP_TOK=$(printf '%s' "$OUT4" | awk '/^   setup +[0-9]/ {print $4}')
+  CLOSE_T=$(printf '%s' "$OUT4" | awk '/^   close +[0-9]/ {print $2}')
+  CLOSE_TOK=$(printf '%s' "$OUT4" | awk '/^   close +[0-9]/ {print $4}')
+  DL_T4=$(printf '%s' "$OUT4" | awk '/^   direct-lane +[0-9]/ {print $2}')
+  DL_TOK4=$(printf '%s' "$OUT4" | awk '/^   direct-lane +[0-9]/ {print $4}')
+  # orchestration TOTAL: "orchestration TOTAL: turns" $4 "tok" $6 — already the
+  # roll-up AC-1 requires, reused here rather than re-summing every row.
+  ORC_T4=$(printf '%s' "$OUT4" | awk '/orchestration TOTAL:/ {print $4}')
+  ORC_TOK4=$(printf '%s' "$OUT4" | awk '/orchestration TOTAL:/ {print $6}')
+  PHASE_TURNS=$((SETUP_T + ORC_T4 + DL_T4 + CLOSE_T))
+  PHASE_TOK=$((SETUP_TOK + ORC_TOK4 + DL_TOK4 + CLOSE_TOK))
+  [ "$PHASE_TURNS" = "$MAIN_TURNS" ] \
+    || fail4 "X3: phase turn sum ($PHASE_TURNS = setup $SETUP_T + orch $ORC_T4 + direct-lane $DL_T4 + close $CLOSE_T) does not equal the main-lane total ($MAIN_TURNS) — a turn was dropped or double-counted at a boundary"
+  [ "$PHASE_TOK" = "$MAIN_TOK" ] \
+    || fail4 "X3: phase billable-tok sum ($PHASE_TOK) does not equal the main-lane total ($MAIN_TOK)"
+
+  # plans/013-phase-accounting.md X1 — a dispatch (the session's only
+  # landmark) lands before any priced turn: setup must say UNAVAILABLE, not
+  # print a confident wrong 0, and the rest of the block must still print.
+  OUT5=$(CLAUDE_PROJECT_DIR="$T/proj4" CLAUDE_TRANSCRIPT_DIR="$T/tx4" METRICS_DIR="$T/proj4/.metrics" \
+         "$0" sess-4 2>&1) || { printf '%s\n' "$OUT5"; die "self-test: sess-4 run exited non-zero"; }
+  printf '%s' "$OUT5" | grep -q 'setup          UNAVAILABLE — the first dispatch landed before any priced turn' \
+    || { printf '%s\n' "$OUT5" >&2; fail "X1 (phase, setup): a dispatch before any priced turn should report UNAVAILABLE, not a wrong 0"; }
+  printf '%s' "$OUT5" | grep -qE 'close +1 turn' \
+    || { printf '%s\n' "$OUT5" >&2; fail "X1 (phase): the one real turn after the dispatch should still land in close"; }
+  printf '%s' "$OUT5" | grep -q 'note: the windows-block tail after the last commit (1 turn(s)) is not direct-lane here — 1 in close, 0 in setup/orchestration' \
+    || { printf '%s\n' "$OUT5" >&2; fail "phase (sess-4): the no-commit trailing ceiling should be reconciled by a note"; }
+
+  # plans/013-phase-accounting.md X2 (other half) — no dispatch and no
+  # commit_landed at all: every priced turn must still resolve to a phase.
+  OUT6=$(CLAUDE_PROJECT_DIR="$T/proj6" CLAUDE_TRANSCRIPT_DIR="$T/tx6" METRICS_DIR="$T/proj6/.metrics" \
+         "$0" sess-6 2>&1) || { printf '%s\n' "$OUT6"; die "self-test: sess-6 run exited non-zero"; }
+  printf '%s' "$OUT6" | grep -qE 'setup +1 turn' \
+    || { printf '%s\n' "$OUT6" >&2; fail "X2 (no landmarks at all): the session's one turn should land in setup, not vanish"; }
+  printf '%s' "$OUT6" | grep -qE 'close +0 turn' \
+    || { printf '%s\n' "$OUT6" >&2; fail "X2 (no landmarks at all): close should be 0, not omitted"; }
+  printf '%s' "$OUT6" | grep -q 'orchestration  no dispatches this session' \
+    || { printf '%s\n' "$OUT6" >&2; fail "X2 (no landmarks at all): should report no dispatches"; }
+
   # THE 0.4.1 DEFECT, ASSERTED DIRECTLY. With no session named, the reader must
   # skip the newer /clear transcript and land on the one that billed something.
   OUT2=$(CLAUDE_PROJECT_DIR="$T/proj" CLAUDE_TRANSCRIPT_DIR="$T/tx" METRICS_DIR="$T/proj/.metrics" \
@@ -290,7 +474,7 @@ FIX
 
   AFTER=$(find "$T" -type f | sort | while read -r f; do printf '%s %s\n' "$f" "$(wc -c <"$f")"; done)
   [ "$BEFORE" = "$AFTER" ] || fail "the reader modified its input tree"
-  printf 'self-test OK — dedupe (split + id-less rows), join, verdict, /clear skip, no content leak, per-turn ratio, chair-windows (with/without turns, before-priced-turn), inputs untouched\n'
+  printf 'self-test OK — dedupe (split + id-less rows), join, verdict, /clear skip, no content leak, per-turn ratio, chair-windows (with/without turns, before-priced-turn), phase-by-turn (X1 UNAVAILABLE landmark, X2 zero-dispatch both halves, X3 arithmetic sum, X4 adjacent/near-zero window, gap-absorption state carry, open close tail, trailing-ceiling note), inputs untouched\n'
   exit 0
 fi
 
@@ -699,6 +883,262 @@ else
       printf '   ^ open-ended: no commit_landed closed this window — I1'"'"'s blind spot, a\n'
       printf '     direct-lane decision (or dispatch) still in flight when the session log\n'
       printf '     was read, priced anyway rather than silently vanishing.\n'
+    fi
+  fi
+fi
+
+# --- main-thread turns by phase (plans/013-phase-accounting.md) --------------
+# What the block above does NOT show: everything that is not a direct-lane
+# commit window. This one partitions the WHOLE main lane — every priced turn,
+# no exceptions (AC-4) — into: setup (before the session's first landmark),
+# one row per dispatch ("orchestration" — turns spent on that dispatch's
+# result), direct-lane (the exact windows above, summed to one line), and
+# close (after the session's last landmark). Landmarks are dispatch and
+# commit_landed only (I2) — dispatch_launched/dispatch_end are worker-side
+# timing, not boundaries on the CHAIR's own thread.
+#
+# ONE BOUNDARY LIST, TWO CONSUMERS (I3). "Direct-lane" here must not be a
+# second, independently-maintained definition of the windows block above. So
+# it isn't one: this block sums $TMP/windows verbatim — the exact same file
+# the block above already built and printed from. Whatever that block calls a
+# direct-lane window, this block calls direct-lane too, by construction, not
+# by coincidence (AC-2's "match to the cent" follows for free).
+#
+# WHAT THAT MEANS FOR "ORCHESTRATION". The windows reduce above only advances
+# `prev` on a commit_landed — a dispatch never moves it, so ANY dispatch
+# between two commits taints the WHOLE inter-commit span, not just the part
+# after it fires (confirmed against a real session: a commit-to-commit span
+# containing one dispatch had priced main-lane turns on BOTH sides of that
+# dispatch's own timestamp). Reusing $TMP/windows verbatim for direct-lane
+# only works if orchestration absorbs that entire tainted span, not just
+# [dispatch.ts, next landmark) — so the FIRST dispatch since the last commit
+# (or session start) gets a window starting at that PREVIOUS landmark, not at
+# its own timestamp; each dispatch after it, within the same tainted span,
+# starts a fresh window at its own timestamp, ending at the next landmark of
+# either kind. This is the one deliberate divergence from the simpler "split
+# strictly on every landmark" reading of the boundary list — recorded here
+# and in scratch/T1-phase-accounting.md because AC-2 forces it, not because
+# it is the only defensible reading.
+#
+# THE OPEN TAIL IS ALWAYS "close", never an extended orchestration window —
+# even when the session's last landmark is a dispatch with nothing after it.
+# Nothing beyond that dispatch is a landmark, so nothing distinguishes
+# "still handling that dispatch's result" from "session-ending ritual"; this
+# block does not invent a signal I2 forbids it from logging. That dispatch's
+# own row still prints — one row per dispatch, unconditionally (Decision 1) —
+# with 0 turns and a note that its trailing time is priced as close instead.
+printf '\n   Main-thread turns by phase\n'
+printf '   Every priced main-lane turn lands in exactly one phase below: setup, one\n'
+printf '   row per dispatch (orchestration), direct-lane (the windows above, summed),\n'
+printf '   and close. The four sums equal the main-lane turns/tokens printed at the\n'
+printf '   top of this report — a mismatch means a boundary bug, not a rounding gap.\n'
+
+EARLIEST_MAIN=$(awk -F'\t' '$1 == "main" && $9 != "-" { print $9 }' "$TMP/priced" | sort | head -1)
+
+# Bounded on neither, either or both sides — "-" means unbounded, same
+# sentinel I1's own windows/TRAIL blocks use for "no prior commit" and "no
+# closing commit". A fourth copy of the same four-way awk (F1 leaves
+# deduplicating this and the two copies above out of scope for this plan).
+price_main_range() {  # price_main_range <start|-> <end|-> -> "turns\ttok\tcost"
+  local s="$1" e="$2"
+  if [ "$s" != "-" ] && [ "$e" != "-" ]; then
+    awk -F'\t' -v s="$s" -v e="$e" '
+      $1 == "main" && $9 != "-" && $9 > s && $9 <= e { n++; tok += $4+$5+$6+$7; cost += $8 }
+      END { printf "%d\t%d\t%.4f", n+0, tok+0, cost+0 }' "$TMP/priced"
+  elif [ "$s" = "-" ] && [ "$e" != "-" ]; then
+    awk -F'\t' -v e="$e" '
+      $1 == "main" && $9 != "-" && $9 <= e { n++; tok += $4+$5+$6+$7; cost += $8 }
+      END { printf "%d\t%d\t%.4f", n+0, tok+0, cost+0 }' "$TMP/priced"
+  elif [ "$s" != "-" ] && [ "$e" = "-" ]; then
+    awk -F'\t' -v s="$s" '
+      $1 == "main" && $9 != "-" && $9 > s { n++; tok += $4+$5+$6+$7; cost += $8 }
+      END { printf "%d\t%d\t%.4f", n+0, tok+0, cost+0 }' "$TMP/priced"
+  else
+    awk -F'\t' '
+      $1 == "main" && $9 != "-" { n++; tok += $4+$5+$6+$7; cost += $8 }
+      END { printf "%d\t%d\t%.4f", n+0, tok+0, cost+0 }' "$TMP/priced"
+  fi
+}
+
+# The shared boundary list (I3). Columns: kind (setup|orch|close), the
+# dispatch's own agent/tier/task ("-" when the row carries none), its
+# occurrence number for that agent name (matching $TMP/join's own pairing —
+# see below), and the window's start/end ("-" = unbounded). `lab_ts` (kept
+# separate from `orch_start`, which a gap-absorbing dispatch pulls back to an
+# earlier landmark) is the dispatch's OWN timestamp — needed so a trailing
+# dispatch's absorbed turns still get priced into ITS row (not silently
+# zero-width) while "close" still starts at that dispatch's own ts, not at
+# the absorbed one. A version of this that reused orch_start for both lost
+# the absorbed turns entirely — caught by X4's fixture below, not by hand.
+: > "$TMP/phaserows"
+if [ -f "$EVLOG" ]; then
+  jq -r -s '
+    [.[] | select(.event == "dispatch" or .event == "commit_landed")]
+    | (reduce .[] as $e (
+        {seen:false, prev:null, first:false, orch_start:null, occ:{},
+         lab_agent:null, lab_tier:null, lab_task:null, lab_occ:null, lab_ts:null, out:[]};
+        if $e.event == "dispatch" then
+          ($e.agent // "unknown") as $a
+          | ((.occ[$a] // 0) + 1) as $n
+          | (.occ + {($a): $n}) as $occ2
+          | if .seen then
+              { seen:true, prev:.prev, first:true, orch_start:$e.ts, occ:$occ2,
+                lab_agent:$a, lab_tier:($e.tier // "?"), lab_task:($e.task // "-"), lab_occ:$n, lab_ts:$e.ts,
+                out: (.out + [{kind:"orch", agent:.lab_agent, tier:.lab_tier, task:.lab_task,
+                               occ:.lab_occ, start:.orch_start, end:$e.ts}]) }
+            else
+              if .first then
+                { seen:true, prev:.prev, first:true, orch_start:(.prev // $e.ts), occ:$occ2,
+                  lab_agent:$a, lab_tier:($e.tier // "?"), lab_task:($e.task // "-"), lab_occ:$n, lab_ts:$e.ts,
+                  out:.out }
+              else
+                { seen:true, prev:.prev, first:true, orch_start:$e.ts, occ:$occ2,
+                  lab_agent:$a, lab_tier:($e.tier // "?"), lab_task:($e.task // "-"), lab_occ:$n, lab_ts:$e.ts,
+                  out: (.out + [{kind:"setup", agent:null, tier:null, task:null, occ:null,
+                                 start:"-", end:$e.ts}]) }
+              end
+            end
+        else
+          if .seen then
+            { seen:false, prev:$e.ts, first:true, orch_start:null, occ:.occ,
+              lab_agent:null, lab_tier:null, lab_task:null, lab_occ:null, lab_ts:null,
+              out: (.out + [{kind:"orch", agent:.lab_agent, tier:.lab_tier, task:.lab_task,
+                             occ:.lab_occ, start:.orch_start, end:$e.ts}]) }
+          else
+            { seen:false, prev:$e.ts, first:true, orch_start:null, occ:.occ,
+              lab_agent:null, lab_tier:null, lab_task:null, lab_occ:null, lab_ts:null, out:.out }
+          end
+        end
+      )) as $r
+    | (if ($r.first | not) then
+         [{kind:"setup", agent:null, tier:null, task:null, occ:null, start:"-", end:"-"}]
+       elif $r.seen then
+         # last landmark was a dispatch: its window is [orch_start, its own
+         # ts) — real, possibly nonzero if it absorbed a leading gap — and
+         # "close" starts at ITS OWN ts, never at the absorbed one.
+         ($r.out + [{kind:"orch", agent:$r.lab_agent, tier:$r.lab_tier, task:$r.lab_task,
+                      occ:$r.lab_occ, start:$r.orch_start, end:$r.lab_ts, last:true},
+                     {kind:"close", agent:null, tier:null, task:null, occ:null,
+                      start:$r.lab_ts, end:"-"}])
+       else
+         ($r.out + [{kind:"close", agent:null, tier:null, task:null, occ:null,
+                      start:$r.prev, end:"-"}])
+       end)
+    | .[]
+    | [.kind, (.agent // "-"), (.tier // "-"), (.task // "-"),
+       (if .occ == null then "-" else (.occ|tostring) end), .start, .end,
+       (if .last then "last" else "-" end)] | @tsv
+  ' "$EVLOG" 2>/dev/null > "$TMP/phaserows" || :
+fi
+# Degenerate case: no dispatch and no commit_landed at all (X2) — the reduce
+# above never runs its body, so `first` stays false and nothing is written.
+# Same rule as the empty-EVLOG case: the whole main lane is setup.
+if [ ! -s "$TMP/phaserows" ]; then
+  printf 'setup\t-\t-\t-\t-\t-\t-\t-\n' > "$TMP/phaserows"
+fi
+
+# Unjoined the same way "What each worker run cost, and what it returned"
+# already is (lines ~489-497): a dispatch's Nth occurrence for its agent name
+# is joined only if $TMP/join (built above from dispatch + dispatch_launched,
+# paired BY ORDER WITHIN AN AGENT NAME) has that many entries for the name —
+# never a guess from the dispatch event's own (unconfirmed) fields alone.
+: > "$TMP/joincount"
+[ -s "$TMP/join" ] && awk -F'\t' '{c[$2]++} END{for (a in c) print a"\t"c[a]}' "$TMP/join" > "$TMP/joincount"
+
+SAW_SETUP=0; SAW_CLOSE=0; SETUP_T=0; CLOSE_T=0
+ORC_ANY=0; ORC_T=0; ORC_TOK=0; ORC_COST="0.0000"; ORC_UNJOINED=0
+while IFS=$'\t' read -r kind agent tier task occ start end last; do
+  case "$kind" in
+    setup)
+      SAW_SETUP=1
+      if [ "$end" = "-" ]; then
+        READOUT=$(price_main_range - -)
+      elif [ -z "$EARLIEST_MAIN" ] || [[ "$end" < "$EARLIEST_MAIN" ]]; then
+        printf '   setup          UNAVAILABLE — the first dispatch landed before any priced turn, setup window end unknown\n'
+        continue
+      else
+        READOUT=$(price_main_range - "$end")
+      fi
+      IFS=$'\t' read -r T TOK COST <<< "$READOUT"
+      SETUP_T=$T
+      printf '   setup        %3d turn(s), %10d billable tok, API $est %8.2f\n' "$T" "$TOK" "$COST"
+      ;;
+    close)
+      SAW_CLOSE=1
+      READOUT=$(price_main_range "$start" -)
+      IFS=$'\t' read -r T TOK COST <<< "$READOUT"
+      CLOSE_T=$T
+      printf '   close        %3d turn(s), %10d billable tok, API $est %8.2f\n' "$T" "$TOK" "$COST"
+      ;;
+    orch)
+      ORC_ANY=1
+      JC=$(awk -F'\t' -v a="$agent" '$1 == a { print $2 }' "$TMP/joincount" 2>/dev/null | head -1)
+      if [ -n "$JC" ] && [ "$occ" -le "$JC" ] 2>/dev/null; then
+        ROLE="$agent"; RTIER="$tier"; RTASK="$task"
+      else
+        ROLE="unjoined"; RTIER="?"; RTASK="-"; ORC_UNJOINED=$((ORC_UNJOINED + 1))
+      fi
+      if [ "$last" = "last" ]; then
+        NOTE="  (session's last landmark — turns after its own timestamp are close, not orchestration)"
+      else
+        NOTE=""
+      fi
+      if [ -z "$EARLIEST_MAIN" ] || [[ "$end" < "$EARLIEST_MAIN" ]]; then
+        printf '   orchestration %-12s %-7s %-5s UNAVAILABLE — dispatch landed before any priced turn, window end unknown\n' \
+          "$ROLE" "$RTIER" "$RTASK"
+        continue
+      fi
+      READOUT=$(price_main_range "$start" "$end")
+      IFS=$'\t' read -r T TOK COST <<< "$READOUT"
+      ORC_T=$((ORC_T + T)); ORC_TOK=$((ORC_TOK + TOK))
+      ORC_COST=$(awk -v a="$ORC_COST" -v b="$COST" 'BEGIN { printf "%.4f", a+b }')
+      printf '   orchestration %-12s %-7s %-5s turns %3d  tok %10d  API $est %8.2f%s\n' \
+        "$ROLE" "$RTIER" "$RTASK" "$T" "$TOK" "$COST" "$NOTE"
+      ;;
+  esac
+done < "$TMP/phaserows"
+[ "$SAW_SETUP" -eq 1 ] || printf '   setup          0 turn(s) — the session'"'"'s first landmark was a commit, not a dispatch\n'
+[ "$ORC_ANY" -eq 1 ] || printf '   orchestration  no dispatches this session\n'
+if [ "$ORC_ANY" -eq 1 ]; then
+  printf '   orchestration TOTAL: turns %3d  tok %10d  API $est %8.2f\n' "$ORC_T" "$ORC_TOK" "$ORC_COST"
+  if [ "$ORC_UNJOINED" -gt 0 ]; then
+    printf '   unjoined dispatches: %d — no dispatch_launched event carried their agent_id.\n' "$ORC_UNJOINED"
+    printf '   Their turns and costs above are real; their roles are not, and nothing is\n'
+    printf '   attributed by guess.\n'
+  fi
+fi
+
+DL_T=0; DL_TOK=0; DL_COST="0.0000"
+if [ -s "$TMP/windows" ]; then
+  while IFS=$'\t' read -r _wh wstart wend _wr; do
+    READOUT=$(price_main_range "$wstart" "$wend")
+    IFS=$'\t' read -r T TOK COST <<< "$READOUT"
+    DL_T=$((DL_T + T)); DL_TOK=$((DL_TOK + TOK))
+    DL_COST=$(awk -v a="$DL_COST" -v b="$COST" 'BEGIN { printf "%.4f", a+b }')
+  done < "$TMP/windows"
+fi
+printf '   direct-lane  %3d turn(s), %10d billable tok, API $est %8.2f  (same windows as "Chair-authored windows" above, summed — AC-2)\n' \
+  "$DL_T" "$DL_TOK" "$DL_COST"
+
+[ "$SAW_CLOSE" -eq 1 ] || printf '   close          0 turn(s)\n'
+
+# AC-2 COVERS COMMITTED WINDOWS ONLY (plan 013, decision 2). The windows block's
+# "trailing" row is a ceiling on chair work after the last commit that closed
+# no commit — including the tail after a dispatch. This block does not count it
+# as direct-lane: those turns fall to close (after the last landmark) and
+# orchestration (a dispatch between the last commit and the last landmark), or
+# setup when no commit ever landed. Say so, with the split, rather than let the
+# two blocks disagree silently.
+if [ -n "${TRAIL:-}" ]; then
+  IFS=$'\t' read -r TR_START _tr_reason <<< "$TRAIL"
+  IFS=$'\t' read -r TR_T _tr_tok _tr_cost <<< "$(price_main_range "$TR_START" -)"
+  if [ "$TR_T" -gt 0 ]; then
+    if [ "$TR_START" = "-" ]; then
+      printf '   note: the windows-block tail after the last commit (%d turn(s)) is not direct-lane here — %d in close, %d in setup/orchestration\n' \
+        "$TR_T" "$CLOSE_T" "$((TR_T - CLOSE_T))"
+    else
+      printf '   note: the windows-block tail after the last commit (%d turn(s)) is not direct-lane here — %d in close, %d in orchestration\n' \
+        "$TR_T" "$CLOSE_T" "$((TR_T - CLOSE_T))"
     fi
   fi
 fi

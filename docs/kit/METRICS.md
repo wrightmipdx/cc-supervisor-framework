@@ -229,6 +229,7 @@ round, and no others:
 | Worker spend past turn 30 | every agent's `maxTurns`, and whether a brief was too large |
 | Chair share of billable tokens | `ROUTING.md`'s claim that the saving is context isolation, not tiering |
 | Each run's cost beside its verdict | the review lane — is `critic` on opus earning its 5x on this close |
+| Main-thread turns by phase (setup / orchestration / direct-lane / close) | distinguishing a plan's *fixed* per-session cost from cost that scales with delegated work — the premise `plans/010-chunked-execution.md`'s chunking and `framework-dev`'s benchmark fixture (`plans/012-benchmark-fixture.md`) both depend on when reading a cost delta |
 
 ### Tokens lead; dollars are a labelled assumption
 
